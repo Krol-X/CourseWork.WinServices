@@ -1,0 +1,21 @@
+//
+// ФАЙЛ РЕСУРСОВ МОДУЛЯ: KSVCCTL.CPP
+//
+// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
+//
+
+#include <windows.h>
+#include <winuser.h>
+#include "resource.h"
+
+STRINGTABLE {
+	IDS_WNDCLASS,                      "KSvcCtl"
+}
+
+IDD_CHOOSE DIALOG 1, 1, 160, 40
+STYLE DS_SETFONT | DS_CENTER | WS_VISIBLE | WS_CAPTION
+FONT 10, "Sans serif" {
+	LTEXT "Выберите режим работы программы", 0, 20, 4, 128, 12
+	PUSHBUTTON "Сервер", IDD1_SERVER, 7,  20, 70, 14
+	PUSHBUTTON "Клиент", IDD1_CLIENT, 83, 20, 70, 14
+}
