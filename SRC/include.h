@@ -1,7 +1,7 @@
 //
-// Р—РђР“РћР›РћР’РћРљ: INCLUDE.H
+// ЗАГОЛОВОК: INCLUDE.H
 //
-// РћРџРРЎРђРќРР•: Р°РЅР°Р»РѕРі stdafx.h РёР· MSVS
+// ОПИСАНИЕ: аналог stdafx.h из MSVS
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
@@ -9,20 +9,20 @@
 #ifndef include_h_
 #define include_h_
 
-// Р”Р»СЏ MSVS
+// Для MSVS
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_NON_CONFORMING_SWPRINTFS
 
-// РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ РЅРµРєРѕС‚РѕСЂС‹С… Р·РЅР°С‡РµРЅРёР№
+// Конфигурация некоторых значений
 #define MAX_LOADSTRING 64
 
-// Р¤Р°Р№Р»С‹ Р·Р°РіРѕР»РѕРІРєРѕРІ C RunTime
+// Файлы заголовков C RunTime
 #include <stdlib.h>
 #include <malloc.h>
 #include <memory.h>
 #include <stdio.h>
 
-// Р¤Р°Р№Р»С‹ Р·Р°РіРѕР»РѕРІРєРѕРІ Windows
+// Файлы заголовков Windows
 #include <windows.h>
 #include <commctrl.h>
 #include <commdlg.h>
