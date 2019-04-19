@@ -6,6 +6,7 @@
 
 #include <windows.h>
 #include <winuser.h>
+#include <commctrl.h>
 #include "resource.h"
 
 STRINGTABLE {
@@ -19,10 +20,10 @@ IDD_CHOOSE DIALOG 1, 1, 141, 90
 STYLE DS_SETFONT | DS_CENTER | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 FONT 10, "Sans serif" {
 	LTEXT "Выберите режим работы программы", IDC_STATIC, 10, 4, 128, 10
-	RADIOBUTTON "Сервер", IDD1_SERVER, 7,   14, 36, 14
-	RADIOBUTTON "Клиент", IDD1_CLIENT, 7,   26, 37, 14
+	AUTORADIOBUTTON "Сервер", IDD1_SERVER, 7,   14, 36, 14
+	AUTORADIOBUTTON "Клиент", IDD1_CLIENT, 7,   26, 37, 14
 	LTEXT       "Хост",   IDC_STATIC,  8,   43, 20, 10
-	CONTROL     "",       IDD1_IP, "SysIPAddress32", WS_TABSTOP, 26, 41, 62, 10
+	CONTROL     "",       IDD1_IP, WC_IPADDRESS, WS_TABSTOP, 26, 41, 62, 10
 	LTEXT       "Порт",   IDC_STATIC,  8,   56, 20, 10
 	EDITTEXT              IDD1_PORT,   26,  54, 26, 10, ES_NUMBER
 	PUSHBUTTON  "",       IDD1_START,  7,   68, 62, 14

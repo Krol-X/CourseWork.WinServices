@@ -27,4 +27,14 @@
 #define IDD1_START                     104
 #define IDD1_STOP                      105
 
+#define IDC_LISTVIEW                   2
+#define IDS_COL_num                    6
+#define IDS_COL                        200
+#define IDS_COL_NUM                    200
+#define IDS_COL_FULLNAME               201
+#define IDS_COL_STREET                 202
+#define IDS_COL_HOUSE                  203
+#define IDS_COL_APPART                 204
+#define IDS_COL_DATE                   205
+
 #endif
