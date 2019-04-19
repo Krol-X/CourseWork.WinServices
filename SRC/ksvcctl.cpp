@@ -38,6 +38,9 @@ const TCHAR *szWindowClass = TEXT("KSvcCtl");
 HINSTANCE hInst;
 HWND hClientWnd;
 HWND hListView;
+TCHAR szStart[MAX_LOADSTRING];
+TCHAR szConnect[MAX_LOADSTRING];
+TCHAR szStop[MAX_LOADSTRING];
 
 
 
@@ -53,67 +56,28 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	hInst = hInstance;
 	InitCommonControls();
 	hClientWnd = 0;
+	LoadString(hInstance, IDS_START, szStart, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_CONNECT, szConnect, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_STOP, szStop, MAX_LOADSTRING);
+	if (!RegisterWndClass()) {
+		MessageBoxA(0, "Cannot register windows class!",
+		            "Error!", MB_ICONERROR | MB_OK);
+		return EXIT_FAILURE;
+	}
 	int r;
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
-			if (!hClientWnd) {
-				if (!RegisterWndClass()) {
-					MessageBoxA(0, "Cannot register windows class!",
-					            "Error!", MB_ICONERROR | MB_OK);
-					return EXIT_FAILURE;
-				}
-			}
 			hClientWnd = InitClientWnd();
 
 			MSG msg;
 			while (GetMessage(&msg, NULL, 0, 0)) {
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
-				if (msg.message == WM_COMMAND &&
-				        LOWORD(msg.wParam) == WM_DESTROY)
-					break;
 			}
 		}
 	} while (r);
 	return EXIT_SUCCESS;
-}
-
-
-
-//
-// ФУНКЦИЯ: INT_PTR CALLBACK ChooseDlgProc(HWND, UINT, WPARAM, LPARAM)
-//
-// ВОЗВРАТИТЬ:  0 - закрытие диалога,
-//             -1 - переключение в режим клиента (при успешном соединении)
-//
-INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
-                               LPARAM lParam) {
-	switch (msg) {
-		case WM_INITDIALOG:
-			//SendMessage(GetDlgItem(hDlg, IDD1_STOP), WS_DISABLED, 0L, 0L);
-			break;
-		case WM_COMMAND:
-			switch(LOWORD(wParam)) {
-				case IDD1_START:
-					if (SendMessage(GetDlgItem(hDlg, IDD1_CLIENT),
-					                BM_GETCHECK, 0L, 0L))
-						EndDialog(hDlg, -1);
-					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
-					                BM_GETCHECK, 0L, 0L)) {
-						// Trying to start a server...
-					}
-					break;
-				case IDD1_STOP:
-
-					break;
-			}
-			return true;
-		case WM_CLOSE:
-			EndDialog(hDlg, 0);
-			break;
-	}
-	return false;
 }
 
 
@@ -161,6 +125,57 @@ ATOM RegisterWndClass() {
 		aReturn = RegisterClass(&wc);
 	}
 	return aReturn;
+}
+
+
+
+//
+// ФУНКЦИЯ: INT_PTR CALLBACK ChooseDlgProc(HWND, UINT, WPARAM, LPARAM)
+//
+// ВОЗВРАТИТЬ:  0 - закрытие диалога,
+//             -1 - переключение в режим клиента (при успешном соединении)
+//
+INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
+                               LPARAM lParam) {
+	switch (msg) {
+		case WM_INITDIALOG:
+			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
+			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
+			goto idd1_server;
+		case WM_COMMAND:
+			switch (LOWORD(wParam)) {
+				case IDD1_START:
+					if (SendMessage(GetDlgItem(hDlg, IDD1_CLIENT),
+					                BM_GETCHECK, 0L, 0L))
+						EndDialog(hDlg, -1);
+					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
+					                BM_GETCHECK, 0L, 0L)) {
+						// Trying to start a server...
+					}
+					break;
+				case IDD1_STOP:
+
+					break;
+				case IDD1_SERVER:
+idd1_server:
+					EnableWindow(GetDlgItem(hDlg, IDD1_IP), FALSE);
+					SetWindowText(GetDlgItem(hDlg, IDD1_START), szStart);
+					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szStop);
+					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
+					break;
+				case IDD1_CLIENT:
+					EnableWindow(GetDlgItem(hDlg, IDD1_IP), TRUE);
+					SetWindowText(GetDlgItem(hDlg, IDD1_START), szConnect);
+					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szNull);
+					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
+					break;
+			}
+			return true;
+		case WM_CLOSE:
+			EndDialog(hDlg, 0);
+			break;
+	}
+	return false;
 }
 
 
@@ -260,7 +275,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 			//RefreshWindow(hWnd);
 			break;
 		case WM_DESTROY:
-			//PostQuitMessage(0);
+			PostQuitMessage(0);
 			break;
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
