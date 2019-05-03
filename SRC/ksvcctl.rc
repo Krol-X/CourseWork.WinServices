@@ -14,10 +14,15 @@ STRINGTABLE {
 	IDS_START,                         "Запустить"
 	IDS_CONNECT,                       "Соединиться"
 	IDS_STOP,                          "Остановить"
+	IDS_ERROR,                         "Ошибка"
+	IDS_ERRSTART                       "Не удалось запустить сервер!"
+	IDS_ERRCONNECT                     "Не удалось подключится к серверу!"
 }
 
 IDD_CHOOSE DIALOG 1, 1, 141, 90
-STYLE DS_SETFONT | DS_CENTER | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+STYLE DS_SETFONT | DS_CENTER | WS_VISIBLE | WS_CAPTION | WS_SYSMENU |
+WS_MINIMIZEBOX
+CAPTION "KSvcCtl"
 FONT 10, "Sans serif" {
 	LTEXT "Выберите режим работы программы", IDC_STATIC, 10, 4, 128, 10
 	AUTORADIOBUTTON "Сервер", IDD1_SERVER, 7,   14, 36, 14

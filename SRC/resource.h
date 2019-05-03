@@ -18,6 +18,9 @@
 #define IDS_START                      2000
 #define IDS_CONNECT                    2001
 #define IDS_STOP                       2002
+#define IDS_ERROR                      2003
+#define IDS_ERRCONNECT                 2004
+#define IDS_ERRSTART                   2005
 
 #define IDD_CHOOSE                     1
 #define IDD1_SERVER                    100

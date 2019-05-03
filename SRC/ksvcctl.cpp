@@ -11,6 +11,7 @@
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 #include "include.h"
+#include "engine.h"
 #include "resource.h"
 
 
@@ -29,18 +30,23 @@ LRESULT CALLBACK ClientWndProc(HWND, UINT, WPARAM, LPARAM);
 //
 const TCHAR *szNull = TEXT("");
 const TCHAR *szConfigFile = TEXT("ksvcctl.cfg");
-const TCHAR *szWindowClass = TEXT("KSvcCtl");
 
 
 //
 // √лобальные переменные
 //
+Server server;
+Client client;
 HINSTANCE hInst;
 HWND hClientWnd;
 HWND hListView;
+TCHAR szWndClass[MAX_LOADSTRING];
 TCHAR szStart[MAX_LOADSTRING];
 TCHAR szConnect[MAX_LOADSTRING];
 TCHAR szStop[MAX_LOADSTRING];
+TCHAR szError[MAX_LOADSTRING];
+TCHAR szErrStart[MAX_LOADSTRING];
+TCHAR szErrConnect[MAX_LOADSTRING];
 
 
 
@@ -56,9 +62,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	hInst = hInstance;
 	InitCommonControls();
 	hClientWnd = 0;
+	LoadString(hInstance, IDS_WNDCLASS, szWndClass, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_START, szStart, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_CONNECT, szConnect, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_STOP, szStop, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_ERROR, szError, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_ERRSTART, szErrStart, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_ERRCONNECT, szErrConnect, MAX_LOADSTRING);
 	if (!RegisterWndClass()) {
 		MessageBoxA(0, "Cannot register windows class!",
 		            "Error!", MB_ICONERROR | MB_OK);
@@ -103,7 +113,7 @@ ATOM RegisterWndClass() {
 	wcex.hCursor         = LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground   = (HBRUSH) (COLOR_WINDOW + 1);
 	wcex.lpszMenuName    = 0;
-	wcex.lpszClassName   = szWindowClass;
+	wcex.lpszClassName   = szWndClass;
 	wcex.hIcon           = LoadIcon(hInst, IDI_APPLICATION);
 	wcex.hIconSm         = (HICON) LoadImage(hInst,
 	                       IDI_APPLICATION, IMAGE_ICON,
@@ -121,7 +131,7 @@ ATOM RegisterWndClass() {
 		wc.hCursor        = LoadCursor(NULL, IDC_ARROW);
 		wc.hbrBackground  = (HBRUSH) (COLOR_WINDOW + 1);
 		wc.lpszMenuName   = 0;
-		wc.lpszClassName  = szWindowClass;
+		wc.lpszClassName  = szWndClass;
 		aReturn = RegisterClass(&wc);
 	}
 	return aReturn;
@@ -141,27 +151,49 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 		case WM_INITDIALOG:
 			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
 			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
+			EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
+			server.hwnd = hDlg;
 			goto idd1_server;
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDD1_START:
+					Address addr;
+					BOOL fError;
+
+					// addr.addr = ...
+					addr.port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_CLIENT),
 					                BM_GETCHECK, 0L, 0L))
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
 					                BM_GETCHECK, 0L, 0L)) {
-						// Trying to start a server...
+						if (server.Start(addr.port)) {
+							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
+							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
+							EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), FALSE);
+							EnableWindow(GetDlgItem(hDlg, IDD1_PORT), FALSE);
+						} else {
+							MessageBox(hDlg, szErrStart, szError,
+							           MB_ICONERROR | MB_OK);
+						}
 					}
 					break;
 				case IDD1_STOP:
-
+					server.Stop();
+					EnableWindow(GetDlgItem(hDlg, IDD1_START), TRUE);
+					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
+					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), TRUE);
+					EnableWindow(GetDlgItem(hDlg, IDD1_PORT), TRUE);
 					break;
 				case IDD1_SERVER:
 idd1_server:
 					EnableWindow(GetDlgItem(hDlg, IDD1_IP), FALSE);
 					SetWindowText(GetDlgItem(hDlg, IDD1_START), szStart);
 					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szStop);
-					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
+					EnableWindow(GetDlgItem(hDlg, IDD1_START),
+					             !server.Active());
+					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT),
+					             !server.Active());
 					break;
 				case IDD1_CLIENT:
 					EnableWindow(GetDlgItem(hDlg, IDD1_IP), TRUE);
@@ -188,8 +220,8 @@ idd1_server:
 // ¬ќ«¬–ј“»“№: идетификатор окна / NULL
 //
 HWND InitClientWnd() {
-	HWND hWnd = CreateWindow(szWindowClass, "",
-	                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,	0,
+	HWND hWnd = CreateWindow(szWndClass, szWndClass,
+	                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0,
 	                         640, 480, NULL, NULL, hInst, NULL);
 	if (hWnd) {
 		if (!InitListView(hWnd))
@@ -230,8 +262,7 @@ bool InitListView(HWND hWnd) {
 	                           NULL);
 	if (hListView) {
 		ListView_SetExtendedListViewStyle (
-		    hListView,
-		    LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES
+		    hListView, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES
 		);
 		LV_COLUMN lvColumn;
 		TCHAR buf[MAX_LOADSTRING];
@@ -244,6 +275,7 @@ bool InitListView(HWND hWnd) {
 			ListView_InsertColumn(hListView, i, &lvColumn);
 		}
 	}
+	ListView_SetItemCount(hListView, 1);
 	return (hListView != NULL);
 }
 
@@ -269,6 +301,15 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 			break;
 
 		case WM_NOTIFY:
+			LV_DISPINFO *lpdi;
+			lpdi = (LV_DISPINFO*) lParam;
+			if (lpdi->item.mask & LVIF_TEXT) {
+				switch(lpdi->item.iSubItem) {
+					default:
+						lpdi->item.pszText = "1";
+						break;
+				}
+			}
 			break;
 
 		case WM_SIZE:
