@@ -49,6 +49,35 @@ TCHAR szErrConnect[MAX_LOADSTRING];
 
 
 //
+// МАКРОС: inline bool initializeSockets()
+//
+// ДЕЙСТВИЕ: инициализирует программу для работы с сокетами
+//
+inline bool initializeSockets() {
+#if PLATFORM == PLATFORM_WINDOWS
+	WSADATA WsaData;
+	return WSAStartup( MAKEWORD(2,2), &WsaData ) == NO_ERROR;
+#else
+	return true;
+#endif
+}
+
+
+
+//
+// МАКРОС: inline void shutdownSockets()
+//
+// ДЕЙСТВИЕ: финализирует работу программы с сокетами
+//
+inline void shutdownSockets() {
+#if PLATFORM == PLATFORM_WINDOWS
+	WSACleanup();
+#endif
+}
+
+
+
+//
 //   ФУНКЦИЯ: int WinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 //
 //   НАЗНАЧЕНИЕ: точка входа для приложения
@@ -61,17 +90,22 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	InitCommonControls();
 	hClientWnd = 0;
 	LoadString(hInstance, IDS_WNDCLASS, szWndClass, MAX_LOADSTRING);
+	if (!RegisterWndClass()) {
+		MessageBoxA(0, "Cannot register windows class!",
+		            szError, MB_ICONERROR | MB_OK);
+		return EXIT_FAILURE;
+	}
+	if (!initializeSockets()) {
+		MessageBoxA(0, "Cannot initialize sockets!",
+		            szError, MB_ICONERROR | MB_OK);
+		return EXIT_FAILURE;
+	}
 	LoadString(hInstance, IDS_START, szStart, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_CONNECT, szConnect, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_STOP, szStop, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERROR, szError, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERRSTART, szErrStart, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERRCONNECT, szErrConnect, MAX_LOADSTRING);
-	if (!RegisterWndClass()) {
-		MessageBoxA(0, "Cannot register windows class!",
-		            "Error!", MB_ICONERROR | MB_OK);
-		return EXIT_FAILURE;
-	}
 	int r;
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
@@ -85,6 +119,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			}
 		}
 	} while (r);
+	shutdownSockets();
 	return EXIT_SUCCESS;
 }
 
