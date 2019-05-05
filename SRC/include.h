@@ -34,9 +34,10 @@
 #include <memory.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <assert.h>
 // C++ Runtime
 #ifdef __cplusplus
-// ...
+#include <stack>
 using namespace std;
 #endif
 
@@ -50,6 +51,7 @@ using namespace std;
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#define closesocket(socket)  close(socket)
 
 #endif
 
