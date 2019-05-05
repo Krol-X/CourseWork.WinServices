@@ -35,8 +35,6 @@ const TCHAR *szConfigFile = TEXT("ksvcctl.cfg");
 //
 // Глобальные переменные
 //
-Server server;
-Client client;
 HINSTANCE hInst;
 HWND hClientWnd;
 HWND hListView;
@@ -152,7 +150,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
 			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
 			EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
-			server.hwnd = hDlg;
+			Server.hwnd = hDlg;
 			goto idd1_server;
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
@@ -167,7 +165,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
 					                BM_GETCHECK, 0L, 0L)) {
-						if (server.Start(addr.port)) {
+						if (Server.Start(addr.port)) {
 							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), FALSE);
@@ -179,7 +177,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					}
 					break;
 				case IDD1_STOP:
-					server.Stop();
+					Server.Stop();
 					EnableWindow(GetDlgItem(hDlg, IDD1_START), TRUE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), TRUE);
@@ -191,9 +189,9 @@ idd1_server:
 					SetWindowText(GetDlgItem(hDlg, IDD1_START), szStart);
 					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szStop);
 					EnableWindow(GetDlgItem(hDlg, IDD1_START),
-					             !server.Active());
+					             !Server.Active());
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT),
-					             !server.Active());
+					             !Server.Active());
 					break;
 				case IDD1_CLIENT:
 					EnableWindow(GetDlgItem(hDlg, IDD1_IP), TRUE);
