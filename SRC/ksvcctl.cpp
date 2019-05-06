@@ -111,7 +111,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
 			hClientWnd = InitClientWnd();
-
 			MSG msg;
 			while (GetMessage(&msg, NULL, 0, 0)) {
 				TranslateMessage(&msg);
@@ -193,7 +192,8 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					Address addr;
 					BOOL fError;
 
-					// addr.addr = ...
+					SendMessage(GetDlgItem(hDlg, IDD1_IP),
+					            IPM_GETADDRESS, 0, (LPARAM) &addr.addr);
 					addr.port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_CLIENT),
 					                BM_GETCHECK, 0L, 0L))

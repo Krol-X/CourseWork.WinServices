@@ -1,8 +1,9 @@
-﻿// 05.05.19 _KROL
+﻿// 06.05.19 _KROL
 // Copyright [C] 2019 Alex Krol krolmail@list.ru
 // Описание протокола
 
-hdr db 17, "VS", 3
-sz dw ?
-cmd dw ? // команда
-crc dd ? // контрольная сумма данных пакета
+hdr  db 17, "VS", 3
+sz   dw ?
+flag db ? // флаги
+cmd  db ? // команда
+crc  dd ? // контрольная сумма данных пакета

@@ -1,7 +1,20 @@
 #include "include.h"
+
+
 #define BUF_SIZE 2048
 #define DATAGRAMM_HDR "\17VS\3"
-
+#define CMD_LIST   0x1A
+#define CMD_INFO   0x2B
+#define CMD_SET    0x3C
+#define FLAG_START      0x01
+#define FLAG_STOP       0x02
+#define FLAG_PAUSE      0x04
+#define FLAG_RESUME     0x08
+#define FLAG_RUN_NO     0x10
+#define FLAG_RUN_MAN    0x20 // manually
+#define FLAG_RUN_AUTO   0x30
+#define FLAG_DENY_PAUSE 0x40
+#define FLAG_DENY_RESUM 0x80
 
 
 inline bool InitializeSockets() {
@@ -41,7 +54,8 @@ struct Address {
 struct Datagramm {
 	char hdr[4];
 	WORD sz;
-	WORD cmd;
+	BYTE flag;
+	BYTE cmd;
 	DWORD crc;
 	char data[];
 };
@@ -175,10 +189,22 @@ struct forkParam {
 	Address sender;
 	stack <Datagramm *> dgst;
 };
+#define stackPop(stack) stack.top(); stack.pop();
+
+
 
 static void *Server_fork(void *p) {
 	forkParam *param = (forkParam *) p;
-	// ...
+	assert( !param->dgst.empty() );
+	Datagramm *data = stackPop(param->dgst);
+	switch (data->cmd) {
+		case CMD_LIST:
+			break;
+		case CMD_INFO:
+			break;
+		case CMD_SET:
+			break;
+	}
 }
 
 
