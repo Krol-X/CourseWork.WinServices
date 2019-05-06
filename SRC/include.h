@@ -37,6 +37,7 @@
 #include <assert.h>
 // C++ Runtime
 #ifdef __cplusplus
+#include <vector>
 #include <stack>
 using namespace std;
 #endif

@@ -3,14 +3,37 @@
 #define DATAGRAMM_HDR "\17VS\3"
 
 
+
+inline bool InitializeSockets() {
+#if PLATFORM == PLATFORM_WINDOWS
+	WSADATA WsaData;
+	return WSAStartup( MAKEWORD(2,2), &WsaData ) == NO_ERROR;
+#else
+	return true;
+#endif
+}
+
+
+
+inline void ShutdownSockets() {
+#if PLATFORM == PLATFORM_WINDOWS
+	WSACleanup();
+#endif
+}
+
+
+
 struct Address {
 	union {
 		struct {
 			unsigned char a, b, c, d;
 		};
-		unsigned int value;
-	} addr;
+		unsigned int addr;
+	};
 	unsigned short port;
+	bool operator == (Address &x) {
+		return (x.addr == addr) && (x.port == port);
+	}
 };
 
 
@@ -27,7 +50,7 @@ struct Datagramm {
 
 class Obj {
 	protected:
-		pthread_t mainThread;
+		pthread_t thr;
 		WORD port;
 	public:
 		enum State {
@@ -57,7 +80,7 @@ class Obj {
 				return 0;
 			unsigned int address = ntohl( from.sin_addr.s_addr );
 			unsigned short port = ntohs( from.sin_port );
-			sender.addr.value=address;
+			sender.addr=address;
 			sender.port=port;
 			return received_bytes;
 		}
@@ -68,11 +91,11 @@ class Obj {
 			assert( size > 0 );
 			if ( socket == 0 )
 				return false;
-			assert( destination.addr.value != 0 );
+			assert( destination.addr != 0 );
 			assert( destination.port != 0 );
 			sockaddr_in address;
 			address.sin_family = AF_INET;
-			address.sin_addr.s_addr = htonl( destination.addr.value );
+			address.sin_addr.s_addr = htonl( destination.addr );
 			address.sin_port = htons( (unsigned short) destination.port );
 			int sent_bytes = sendto( sock, (const char*)data, size, 0,
 			                         (const sockaddr*)&address,
@@ -121,7 +144,7 @@ class : public Obj {
 				return false;
 			}
 #endif
-			pthread_create(&mainThread, 0, Server_main, 0);
+			pthread_create(&thr, 0, Server_main, 0);
 			state = State::Active;
 			return true;
 		}
@@ -138,8 +161,8 @@ class : public Obj {
 				closesocket(sock);
 				sock = 0;
 			}
-			if ( mainThread != 0 ) {
-				pthread_join(mainThread, 0);
+			if ( thr != 0 ) {
+				pthread_join(thr, 0);
 			}
 			state = State::Passive;
 		}
@@ -147,15 +170,45 @@ class : public Obj {
 
 
 
+struct forkParam {
+	pthread_t thr;
+	Address sender;
+	stack <Datagramm *> dgst;
+};
+
+static void *Server_fork(void *p) {
+	forkParam *param = (forkParam *) p;
+	// ...
+}
+
+
+
 static void *Server_main(void *) {
 	Address sender;
 	char buf[BUF_SIZE];
-	Datagramm *dg = (Datagramm *) buf;
+	vector <forkParam> thrs;
+
+	Datagramm *dg;
 	int recived;
 	while ( Server.state != Obj::State::Stoping ) {
 		if ( (recived = Server.Receive(sender, &buf, BUF_SIZE)) ) {
 			if ( strcmp(dg->hdr, DATAGRAMM_HDR) == 0 ) {
-
+				dg = (Datagramm *) new char[recived];
+				memcpy(dg, buf, recived);
+				bool founded = false;
+				for (auto &i: thrs) {
+					if (i.sender == sender) {
+						i.dgst.push(dg);
+						founded = true;
+						break;
+					}
+				}
+				if (!founded) {
+					forkParam *param = new forkParam;
+					param->sender = sender;
+					thrs.insert(thrs.end(), *param);
+					pthread_create(&param->thr, 0, Server_fork, param);
+				}
 			}
 		}
 	}
@@ -176,7 +229,7 @@ class : public Obj {
 			state = State::Starting;
 			this->ip = ip;
 			this->port = port;
-			pthread_create(&mainThread, 0, Client_main, 0);
+			pthread_create(&thr, 0, Client_main, 0);
 			state = State::Active;
 			return true;
 		}
@@ -185,12 +238,10 @@ class : public Obj {
 		}
 		void Stop() {
 			state = State::Stoping;
-			pthread_join(mainThread, 0);
+			pthread_join(thr, 0);
 			state = State::Passive;
 		}
 } Client;
-
-
 
 static void *Client_main(void *) {
 	while ( Client.state != Obj::State::Stoping ) {
