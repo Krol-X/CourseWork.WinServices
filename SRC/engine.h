@@ -1,20 +1,19 @@
+//
+// ÇÀÃÎËÎÂÎÊ-ÌÎÄÓËÜ: ENGINE.H
+//
+// ÎÏÈÑÀÍÈÅ: ðåàëèçàöèÿ ñåðâåðà è êëèåíòà
+//
+// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
+//
 #include "include.h"
+#include "services.h"
 
 
-#define BUF_SIZE 2048
+#define BUF_SIZE 4096
 #define DATAGRAMM_HDR "\17VS\3"
 #define CMD_LIST   0x1A
 #define CMD_INFO   0x2B
 #define CMD_SET    0x3C
-#define FLAG_START      0x01
-#define FLAG_STOP       0x02
-#define FLAG_PAUSE      0x04
-#define FLAG_RESUME     0x08
-#define FLAG_RUN_NO     0x10
-#define FLAG_RUN_MAN    0x20 // manually
-#define FLAG_RUN_AUTO   0x30
-#define FLAG_DENY_PAUSE 0x40
-#define FLAG_DENY_RESUM 0x80
 
 
 inline bool InitializeSockets() {
@@ -68,19 +67,19 @@ class Obj {
 		WORD port;
 	public:
 		enum State {
-			Passive,
-			Active,
-			Starting,
-			Stoping,
-			StartError
+			PASSIVE,
+			ACTIVE,
+			STARTING,
+			STOPING,
+			STARTERROR
 		} state;
 		HWND hwnd;
 		int sock;
 
 
 		int Receive(Address &sender, void *data, int size) {
-			assert( data );
-			assert( size > 0 );
+			_VERIFY( data );
+			_VERIFY( size > 0 );
 			if ( socket == 0 )
 				return false;
 #if PLATFORM == PLATFORM_WINDOWS
@@ -101,12 +100,12 @@ class Obj {
 
 
 		bool Send(Address &destination, void *data, int size) {
-			assert( data );
-			assert( size > 0 );
+			_VERIFY( data );
+			_VERIFY( size > 0 );
 			if ( socket == 0 )
 				return false;
-			assert( destination.addr != 0 );
-			assert( destination.port != 0 );
+			_VERIFY( destination.addr != 0 );
+			_VERIFY( destination.port != 0 );
 			sockaddr_in address;
 			address.sin_family = AF_INET;
 			address.sin_addr.s_addr = htonl( destination.addr );
@@ -124,7 +123,7 @@ static void *Server_main(void *);
 class : public Obj {
 	public:
 		bool Start(WORD port) {
-			state = State::Starting;
+			state = State::STARTING;
 			this->sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 			if ( sock <= 0 ) {
 				printf( "failed to create socket\n" );
@@ -159,18 +158,18 @@ class : public Obj {
 			}
 #endif
 			pthread_create(&thr, 0, Server_main, 0);
-			state = State::Active;
+			state = State::ACTIVE;
 			return true;
 		}
 
 
 		bool Active() {
-			return state == State::Active;
+			return state == State::ACTIVE;
 		}
 
 
 		void Stop() {
-			state = State::Stoping;
+			state = State::STOPING;
 			if ( sock != 0 ) {
 				closesocket(sock);
 				sock = 0;
@@ -178,7 +177,7 @@ class : public Obj {
 			if ( thr != 0 ) {
 				pthread_join(thr, 0);
 			}
-			state = State::Passive;
+			state = State::PASSIVE;
 		}
 } Server;
 
@@ -195,7 +194,7 @@ struct forkParam {
 
 static void *Server_fork(void *p) {
 	forkParam *param = (forkParam *) p;
-	assert( !param->dgst.empty() );
+	_VERIFY( !param->dgst.empty() );
 	Datagramm *data = stackPop(param->dgst);
 	switch (data->cmd) {
 		case CMD_LIST:
@@ -216,7 +215,7 @@ static void *Server_main(void *) {
 
 	Datagramm *dg;
 	int recived;
-	while ( Server.state != Obj::State::Stoping ) {
+	while ( Server.state != Obj::State::STOPING ) {
 		if ( (recived = Server.Receive(sender, &buf, BUF_SIZE)) ) {
 			if ( strcmp(dg->hdr, DATAGRAMM_HDR) == 0 ) {
 				dg = (Datagramm *) new char[recived];
@@ -251,26 +250,26 @@ class : public Obj {
 		UINT ip;
 	public:
 		bool Start(UINT ip, WORD port) {
-			assert( !Active() );
-			state = State::Starting;
+			_VERIFY( !Active() );
+			state = State::STARTING;
 			this->ip = ip;
 			this->port = port;
 			pthread_create(&thr, 0, Client_main, 0);
-			state = State::Active;
+			state = State::ACTIVE;
 			return true;
 		}
 		bool Active() {
-			return state == State::Active;
+			return state == State::ACTIVE;
 		}
 		void Stop() {
-			state = State::Stoping;
+			state = State::STOPING;
 			pthread_join(thr, 0);
-			state = State::Passive;
+			state = State::PASSIVE;
 		}
 } Client;
 
 static void *Client_main(void *) {
-	while ( Client.state != Obj::State::Stoping ) {
+	while ( Client.state != Obj::State::STOPING ) {
 	}
 }
 

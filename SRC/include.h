@@ -9,6 +9,14 @@
 #ifndef include_h_
 #define include_h_
 
+#ifndef _VERIFY
+#   ifdef _DEBUG
+#		define _VERIFY(x)   _ASSERTE(x)
+#   else
+#		define _VERIFY(x)   ((void)(x))
+#   endif
+#endif
+
 #define PLATFORM_WINDOWS  1
 #define PLATFORM_MAC      2
 #define PLATFORM_UNIX     3
@@ -64,5 +72,7 @@ using namespace std;
 #include <windows.h>
 #include <commctrl.h>
 #include <commdlg.h>
+
+#include "extends.h"
 
 #endif
