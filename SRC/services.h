@@ -9,54 +9,34 @@
 
 #define SVC_TIMEOUT     10000
 /*
-#define SERVICE_STOPPED 0x00000001
-#define SERVICE_START_PENDING 0x00000002
-#define SERVICE_STOP_PENDING 0x00000003
-#define SERVICE_RUNNING 0x00000004
+#define SERVICE_STOPPED          0x00000001
+#define SERVICE_START_PENDING    0x00000002
+#define SERVICE_STOP_PENDING     0x00000003
+#define SERVICE_RUNNING          0x00000004
 #define SERVICE_CONTINUE_PENDING 0x00000005
-#define SERVICE_PAUSE_PENDING 0x00000006
-#define SERVICE_PAUSED 0x00000007
+#define SERVICE_PAUSE_PENDING    0x00000006
+#define SERVICE_PAUSED           0x00000007
 
-#define SERVICE_CONTROL_STOP 0x00000001
-#define SERVICE_CONTROL_PAUSE 0x00000002
+#define SERVICE_CONTROL_STOP     0x00000001
+#define SERVICE_CONTROL_PAUSE    0x00000002
 #define SERVICE_CONTROL_CONTINUE 0x00000003
 
-#define SERVICE_BOOT_START 0x00000000
-#define SERVICE_SYSTEM_START 0x00000001
-#define SERVICE_AUTO_START 0x00000002
-#define SERVICE_DEMAND_START 0x00000003
-#define SERVICE_DISABLED 0x00000004
+#define SERVICE_BOOT_START       0x00000000
+#define SERVICE_SYSTEM_START     0x00000001
+#define SERVICE_AUTO_START       0x00000002
+#define SERVICE_DEMAND_START     0x00000003
+#define SERVICE_DISABLED         0x00000004
 */
-
-
-enum State {
-	RESUMING = SERVICE_CONTINUE_PENDING,
-	PAUSING = SERVICE_PAUSE_PENDING,
-	PAUSED = SERVICE_PAUSED,
-	ACTIVE = SERVICE_RUNNING,
-	STARTING = SERVICE_START_PENDING,
-	STOPING = SERVICE_STOP_PENDING,
-	PASSIVE = SERVICE_STOPPED,
-	UNKNOWN = 0
-};
+#define SERVICE_CONTROL_START    0x00000004
 
 
 
 class __SVCObj {
-	public:
-		enum Error {
-			OK = 0,
-			NOT_INITED,
-			NOT_GETSTATUS,
-			NOT_GETCONFIG,
-			NOT_STARTED,
-			NOT_STOPPED
-		};
 	protected:
 		SC_HANDLE hSCM;
-		Error err;
+		bool err;
 	public:
-		Error &lastErr() {
+		bool &lastErr() {
 			return err;
 		}
 };
@@ -141,83 +121,39 @@ class ServiceObj : __SVCObj {
 
 		extends(Status, ServiceObj)
 	public:
-		operator State() {
-			SC_HANDLE hService;
-			LPSERVICE_STATUS stat = new SERVICE_STATUS;
-			hService = OpenService(self->hSCM, self->name,
-			                       SERVICE_QUERY_STATUS);
-			self->err = (hService == NULL)? NOT_INITED: OK;
-			if (self->err)
-				return UNKNOWN;
-
-			if (!QueryServiceStatus(hService, stat)) {
-				self->err = NOT_GETSTATUS;
-				return UNKNOWN;
-			}
-
-			State r;
-			switch (stat->dwCurrentState) {
-				case SERVICE_STOPPED:
-					r = PASSIVE;
-					break;
-				case SERVICE_RUNNING:
-					r = ACTIVE;
-					break;
-				case SERVICE_PAUSED:
-					r = PAUSED;
-					break;
-				case SERVICE_STOP_PENDING:
-					r = STOPING;
-					break;
-				case SERVICE_START_PENDING:
-					r = STARTING;
-					break;
-				case SERVICE_PAUSE_PENDING:
-					r = PAUSING;
-					break;
-				case SERVICE_CONTINUE_PENDING:
-					r = RESUMING;
-					break;
-				default:
-					_VERIFY(false);
-					break;
-			}
-			_VERIFY(CloseServiceHandle(hService));
-			return r;
-		}
-
-
 		operator int() {
 			SC_HANDLE hService;
 			hService = OpenService(self->hSCM, self->name,
-			                       SERVICE_QUERY_CONFIG);
-			self->err = (hService == NULL)? NOT_INITED: OK;
+			                       SERVICE_QUERY_STATUS|SERVICE_QUERY_CONFIG);
+			self->err = (hService == NULL);
 			if (self->err)
-				return 0;
-
+				return -1;
+			// 1. Get status
+			LPSERVICE_STATUS stat = new SERVICE_STATUS;
+			if (!QueryServiceStatus(hService, stat)) {
+				self->err = true;
+				return -1;
+			}
+			// 2. Get service run config
 			DWORD cbNeeded;
 			if (!QueryServiceConfig(hService, NULL, 0, &cbNeeded)) {
 				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-					self->err = NOT_GETCONFIG;
-					return 0;
+					self->err = true;
+					return -1;
 				}
 			}
 			LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG)
 			                              new char[cbNeeded];
 			if (!QueryServiceConfig(hService, conf, cbNeeded, &cbNeeded)) {
-				self->err = NOT_GETCONFIG;
-				return 0;
+				self->err = true;
+				return -1;
 			}
-
-			int r = (int)((State)(*this));
-			switch (conf->dwStartType) {
-				case SERVICE_DISABLED:
-					return r | FLAG_RUN_NO;
-				case SERVICE_DEMAND_START:
-					return r | FLAG_RUN_MAN;
-				case SERVICE_AUTO_START:
-					return r | FLAG_RUN_AUTO;
-			}
+			// 00TTTSSS; T - start type, S - state
+			int r = conf->dwStartType << 3 + stat->dwCurrentState;
+			delete stat;
+			delete [] conf;
+			_VERIFY(CloseServiceHandle(hService));
+			return r;
 		}
 
 
@@ -225,24 +161,26 @@ class ServiceObj : __SVCObj {
 			SC_HANDLE hService;
 			bool r;
 			_VERIFY(flags);
-			switch (flags & 0x0F) {
-				case FLAG_START:
+			switch (flags & 0x07) {
+				case 0:
+					break;
+				case SERVICE_CONTROL_START:
 					hService = OpenService(self->hSCM, self->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL)? NOT_INITED: OK;
+					self->err = (hService == NULL);
 					if (self->err)
-						return 0;
+						return -1;
 					if (!StartService(hService, 0, NULL)) {
-						self->err = NOT_STARTED;
+						self->err = true;
 						_VERIFY(CloseServiceHandle(hService));
-						return 0;
+						return -1;
 					}
 					SERVICE_STATUS SvcStatus;
 					for (;;) {
 						if (!QueryServiceStatus(hService, &SvcStatus)) {
-							self->err = NOT_GETSTATUS;
+							self->err = true;
 							_VERIFY(CloseServiceHandle(hService));
-							return 1;
+							return -1;
 						}
 						if (SvcStatus.dwCurrentState != SERVICE_START_PENDING)
 							break;
@@ -253,74 +191,83 @@ class ServiceObj : __SVCObj {
 					}
 					_VERIFY(CloseServiceHandle(hService));
 					if (SvcStatus.dwCurrentState != SERVICE_RUNNING) {
-						self->err = NOT_STARTED;
-						return 0;
+						self->err = true;
+						return -1;
 					}
 					break;
-				case FLAG_STOP:
+				case SERVICE_CONTROL_STOP:
 					hService = OpenService(self->hSCM, self->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL)? NOT_INITED: OK;
+					self->err = (hService == NULL);
 					if (self->err)
-						return 0;
+						return -1;
 					r = ControlServiceAndWait(hService,
 					                          SERVICE_CONTROL_STOP,
 					                          SERVICE_STOPPED, SVC_TIMEOUT);
 					_VERIFY(CloseServiceHandle(hService));
 					if (r==0) {
-						self->err = NOT_STOPPED;
-						return 0;
+						self->err = true;
+						return -1;
 					}
 					break;
-				case FLAG_PAUSE:
+				case SERVICE_CONTROL_PAUSE:
 					hService = OpenService(self->hSCM, self->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL)? NOT_INITED: OK;
+					self->err = (hService == NULL);
 					if (self->err)
-						return 0;
+						return -1;
 					r = ControlServiceAndWait(hService,
 					                          SERVICE_CONTROL_PAUSE,
 					                          SERVICE_PAUSED, SVC_TIMEOUT);
 					_VERIFY(CloseServiceHandle(hService));
 					if (r==0) {
-						self->err = NOT_STOPPED;
-						return 0;
+						self->err = true;
+						return -1;
 					}
 					break;
-				case FLAG_RESUME:
+				case SERVICE_CONTROL_CONTINUE:
 					hService = OpenService(self->hSCM, self->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL)? NOT_INITED: OK;
+					self->err = (hService == NULL);
 					if (self->err)
-						return 0;
+						return -1;
 					r = ControlServiceAndWait(hService,
 					                          SERVICE_CONTROL_CONTINUE,
 					                          SERVICE_RUNNING, SVC_TIMEOUT);
 					_VERIFY(CloseServiceHandle(hService));
 					if (r==0) {
-						self->err = NOT_STOPPED;
-						return 0;
+						self->err = true;
+						return -1;
 					}
 					break;
 				default:
 					_VERIFY(false);
 			}
-			switch (flags & 0x30) {
-				// TODO: find and (paste) code there
-				case FLAG_RUN_NO:
-					break;
-				case FLAG_RUN_MAN:
-					break;
-				case FLAG_RUN_AUTO:
-					break;
-				default:
-					_VERIFY(false);
+			flags = (flags >> 3) & 7;
+			if (flags) {
+				_VERIFY(flags<=4);
+				DWORD cbNeeded;
+				if (!QueryServiceConfig(hService, NULL, 0, &cbNeeded)) {
+					if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+						self->err = true;
+						return -1;
+					}
+				}
+				LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG)
+				                              new char[cbNeeded];
+				if (!QueryServiceConfig(hService, conf, cbNeeded, &cbNeeded)) {
+					self->err = true;
+					return -1;
+				}
+				ChangeServiceConfig(
+				    hService, SERVICE_NO_CHANGE, flags,
+				    SERVICE_NO_CHANGE, 0, 0, 0, 0, 0, 0, 0
+				);
+				delete conf;
 			}
 			return (int)(*this);
 		}
 		extends_end(Status)
-
-
 
 
 
@@ -339,7 +286,7 @@ class SCMObj : __SVCObj {
 	public:
 		SCMObj() {
 			hSCM = 0;
-			err = NOT_INITED;
+			err = false;
 		}
 
 
@@ -352,7 +299,7 @@ class SCMObj : __SVCObj {
 				CloseServiceHandle(hSCM);
 			}
 			hSCM = OpenSCManager(MachineName, DBName, Access);
-			err = (hSCM == NULL)? NOT_INITED: OK;
+			err = (hSCM == NULL);
 		}
 
 
@@ -361,13 +308,33 @@ class SCMObj : __SVCObj {
 		}
 
 
-		int getNum() {
-			// TODO: code me / this method is necessary?
-		}
-
-
-		LPENUM_SERVICE_STATUS getEnum(int size, bool &isEnd) {
-			// TODO: code me
+		void *getEnum(DWORD &size, DWORD &num) {
+			if (!Inited())
+				return 0;
+			DWORD cbNeeded;
+			DWORD dwResumeHandle = 0;
+			_VERIFY(EnumServicesStatus(hSCM, 0, 0, 0, 0, &cbNeeded, 0, 0));
+			LPENUM_SERVICE_STATUS stat = (LPENUM_SERVICE_STATUS)
+			                             new char[cbNeeded];
+			if (!EnumServicesStatus(hSCM, SERVICE_WIN32, SERVICE_STATE_ALL,
+			                        stat, cbNeeded, &cbNeeded,
+			                        &num, &dwResumeHandle))
+				return 0;
+			char *tmp = new char[cbNeeded];
+			size = 0;
+#define put(x) tmp[size++] = x;
+#define puts(x) strcpy(tmp+size, x); size+=strlen(x)+1;
+			for (int i=0; i<num; i++) {
+				int x = ServiceObj(hSCM, stat->lpServiceName).Status;
+				put(x);
+				puts(stat->lpServiceName);
+				puts(stat->lpDisplayName);
+			}
+			delete stat;
+			char *buf = new char[size];
+			memcpy(buf, tmp, size);
+			delete tmp;
+			return buf;
 		}
 
 

@@ -6,14 +6,13 @@
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 #include "include.h"
-#include "services.h"
-
 
 #define BUF_SIZE 4096
 #define DATAGRAMM_HDR "\17VS\3"
 #define CMD_LIST   0x1A
-#define CMD_INFO   0x2B
-#define CMD_SET    0x3C
+#define CMD_SET    0x2B
+
+#include "services.h"
 
 
 inline bool InitializeSockets() {
@@ -201,8 +200,6 @@ static void *Server_fork(void *p) {
 	Datagramm *data = stackPop(param->dgst);
 	switch (data->cmd) {
 		case CMD_LIST:
-			break;
-		case CMD_INFO:
 			break;
 		case CMD_SET:
 			break;
