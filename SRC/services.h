@@ -331,14 +331,14 @@ class SCMObj : __SVCObj {
 				puts(stat->lpDisplayName);
 			}
 			delete stat;
-			char *buf = new char[size];
-			memcpy(buf, tmp, size);
+			char *buf = new char[size+RESERVED_BYTES];
+			memcpy(buf+RESERVED_BYTES, tmp, size);
 			delete tmp;
 			return buf;
 		}
 
 
-		ServiceObj getService(LPCTSTR name, DWORD Access) {
+		ServiceObj getService(LPCTSTR name) {
 			return ServiceObj(hSCM, name);
 		}
 

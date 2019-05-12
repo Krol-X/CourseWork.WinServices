@@ -7,6 +7,15 @@
 //
 #include "include.h"
 
+#define RESERVED_BYTES 4+4+1
+struct Datagram {
+	char hdr[4];
+	DWORD sz;
+	BYTE cmd;
+	char data[];
+};
+
+
 #define BUF_SIZE 4096
 #define DATAGRAMM_HDR "\17VS\3"
 #define CMD_LIST   0x1A
@@ -45,17 +54,6 @@ struct Address {
 	bool operator == (Address &x) {
 		return (x.addr == addr) && (x.port == port);
 	}
-};
-
-
-
-struct Datagramm {
-	char hdr[4];
-	WORD sz;
-	BYTE flag;
-	BYTE cmd;
-	DWORD crc;
-	char data[];
 };
 
 
@@ -187,7 +185,7 @@ class : public Obj {
 struct forkParam {
 	pthread_t thr;
 	Address sender;
-	stack <Datagramm *> dgst;
+	stack <Datagram *> dgst;
 };
 #define stackPop(stack) stack.top(); stack.pop();
 #define waitStack(stack) while ( stack.empty() ) sleep(1);
@@ -197,11 +195,22 @@ struct forkParam {
 static void *Server_fork(void *p) {
 	forkParam *param = (forkParam *) p;
 	_VERIFY( !param->dgst.empty() );
-	Datagramm *data = stackPop(param->dgst);
+	Datagram *data = stackPop(param->dgst);
+	DWORD size, num;
+	char *buf;
 	switch (data->cmd) {
 		case CMD_LIST:
+			data = (Datagram *) SCMObj().getEnum(size, num);
+			memcpy(data->hdr, DATAGRAMM_HDR, 4);
+			data->sz = size;
+			data->cmd = CMD_LIST;
+			_VERIFY(Server.Send(param->sender, buf, size));
+			// Check out datagram??
 			break;
 		case CMD_SET:
+			ServiceObj srv = SCMObj().getService(&data->data[1]);
+			srv.Status = (int) &data->data[0];
+			// Check out datagram??
 			break;
 	}
 }
@@ -213,12 +222,12 @@ static void *Server_main(void *) {
 	char buf[BUF_SIZE];
 	vector <forkParam> thrs;
 
-	Datagramm *dg;
+	Datagram *dg;
 	int recived;
 	while ( Server.state != Obj::State::STOPING ) {
 		if ( (recived = Server.Receive(sender, &buf, BUF_SIZE)) ) {
 			if ( strcmp(dg->hdr, DATAGRAMM_HDR) == 0 ) {
-				dg = (Datagramm *) new char[recived];
+				dg = (Datagram *) new char[recived];
 				memcpy(dg, buf, recived);
 				bool founded = false;
 				for (auto &i: thrs) {
