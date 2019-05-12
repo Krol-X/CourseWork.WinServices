@@ -17,6 +17,8 @@ struct Datagram {
 
 
 #define BUF_SIZE 4096
+#define MAX_WAIT 3.0
+#define MAX_TRYING 3
 #define DATAGRAMM_HDR "\17VS\3"
 #define CMD_LIST   0x1A
 #define CMD_SET    0x2B
@@ -60,24 +62,15 @@ struct Address {
 
 class Obj {
 	protected:
-		pthread_t thr;
 		WORD port;
 	public:
-		enum State {
-			PASSIVE,
-			ACTIVE,
-			STARTING,
-			STOPING,
-			STARTERROR
-		} state;
 		HWND hwnd;
 		int sock;
-
 
 		int Receive(Address &sender, void *data, int size) {
 			_VERIFY( data );
 			_VERIFY( size > 0 );
-			if ( socket == 0 )
+			if ( sock == 0 )
 				return false;
 #if PLATFORM == PLATFORM_WINDOWS
 			typedef int socklen_t;
@@ -99,7 +92,7 @@ class Obj {
 		bool Send(Address &destination, void *data, int size) {
 			_VERIFY( data );
 			_VERIFY( size > 0 );
-			if ( socket == 0 )
+			if ( sock == 0 )
 				return false;
 			_VERIFY( destination.addr != 0 );
 			_VERIFY( destination.port != 0 );
@@ -118,11 +111,20 @@ class Obj {
 
 static void *Server_main(void *);
 class : public Obj {
+	protected:
+		pthread_t thr;
 	public:
+		enum State {
+			PASSIVE,
+			ACTIVE,
+			STARTING,
+			STOPING,
+			STARTERROR
+		} state;
 		SCMObj SCM;
-		
+
 		bool Start(WORD port) {
-			state = State::STARTING;
+			state = STARTING;
 			this->sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 			if ( sock <= 0 ) {
 				printf( "failed to create socket\n" );
@@ -157,18 +159,18 @@ class : public Obj {
 			}
 #endif
 			pthread_create(&thr, 0, Server_main, 0);
-			state = State::ACTIVE;
+			state = ACTIVE;
 			return true;
 		}
 
 
 		bool Active() {
-			return state == State::ACTIVE;
+			return state == ACTIVE;
 		}
 
 
 		void Stop() {
-			state = State::STOPING;
+			state = STOPING;
 			if ( sock != 0 ) {
 				closesocket(sock);
 				sock = 0;
@@ -176,7 +178,7 @@ class : public Obj {
 			if ( thr != 0 ) {
 				pthread_join(thr, 0);
 			}
-			state = State::PASSIVE;
+			state = PASSIVE;
 		}
 } Server;
 
@@ -205,17 +207,18 @@ static void *Server_fork(void *p) {
 			data->sz = size;
 			data->cmd = CMD_LIST;
 			_VERIFY(Server.Send(param->sender, buf, size));
-			// Check out datagram??
+			// Check out datagram?
 			break;
 		case CMD_SET:
 			ServiceObj srv = SCMObj().getService(&data->data[1]);
 			srv.Status = (int) &data->data[0];
-			// Check out datagram??
+			// Check out datagram?
 			break;
 	}
+	return 0;
 }
 
-
+#define chkhdr(hdr) memcmp(hdr, DATAGRAMM_HDR, 4) == 0
 
 static void *Server_main(void *) {
 	Address sender;
@@ -224,9 +227,9 @@ static void *Server_main(void *) {
 
 	Datagram *dg;
 	int recived;
-	while ( Server.state != Obj::State::STOPING ) {
+	while ( Server.state != Server.State::STOPING ) {
 		if ( (recived = Server.Receive(sender, &buf, BUF_SIZE)) ) {
-			if ( strcmp(dg->hdr, DATAGRAMM_HDR) == 0 ) {
+			if ( chkhdr(dg->hdr) ) {
 				dg = (Datagram *) new char[recived];
 				memcpy(dg, buf, recived);
 				bool founded = false;
@@ -246,6 +249,7 @@ static void *Server_main(void *) {
 			}
 		}
 	}
+	return 0;
 }
 
 
@@ -253,33 +257,58 @@ static void *Server_main(void *) {
 ////////////////////////////////////////////////////////////////////////////////
 // Client
 //
-static void *Client_main(void *);
 class : public Obj {
 	private:
 		UINT ip;
+		Address a;
 	public:
-		bool Start(UINT ip, WORD port) {
-			_VERIFY( !Active() );
-			state = State::STARTING;
-			this->ip = ip;
-			this->port = port;
-			pthread_create(&thr, 0, Client_main, 0);
-			state = State::ACTIVE;
-			return true;
+		void Init(int addr, int port) {
+			a.addr = addr;
+			a.port = port;
 		}
-		bool Active() {
-			return state == State::ACTIVE;
+
+
+		void *getList(int &size) {
+			int sz = 0, _try = 0;
+			Datagram *buf = (Datagram *) new char[BUF_SIZE];
+			Datagram *dg = (Datagram *) new char[RESERVED_BYTES + sz];
+			dg->cmd = CMD_LIST;
+			dg->sz = sz;
+			for (int i=0; i<MAX_TRYING; i++) {
+				Send(a, dg, RESERVED_BYTES + sz);
+				clock_t start = clock();
+				while ( ( sz = Receive(a, buf, BUF_SIZE) ) == 0
+				        && (!chkhdr(buf->hdr)) ) {
+					clock_t end = clock();
+					double seconds = (double)(end - start) / CLOCKS_PER_SEC;
+					if (seconds>=MAX_WAIT)
+						break;
+				}
+				if ( chkhdr(buf->hdr) )
+					break;
+			}
+			delete dg;
+			if ( chkhdr(buf->hdr) && buf->cmd == CMD_LIST ) {
+				size = buf->sz;
+				void *x = (void *) new char[size];
+				memcpy(x, &buf->data, size);
+				delete[] buf;
+				return x;
+			}
+			size = 0;
+			return 0;
 		}
-		void Stop() {
-			state = State::STOPING;
-			pthread_join(thr, 0);
-			state = State::PASSIVE;
+
+
+		void set(char *srv, BYTE state) {
+			int sz = 1+strlen(srv)+1;
+			Datagram *dg = (Datagram *) new char[RESERVED_BYTES + sz];
+			dg->cmd = CMD_SET;
+			dg->sz = sz;
+			dg->data[0] = state;
+			strcpy(&dg->data[1], srv);
+			Send(a, dg, RESERVED_BYTES + sz);
+			// Check out datagram?
 		}
 } Client;
-
-static void *Client_main(void *) {
-	while ( Client.state != Obj::State::STOPING ) {
-		
-	}
-}
 

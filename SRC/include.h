@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <assert.h>
+#include <time.h>
 // C++ Runtime
 #ifdef __cplusplus
 #include <vector>

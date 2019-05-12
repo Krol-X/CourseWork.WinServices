@@ -149,7 +149,7 @@ class ServiceObj : __SVCObj {
 				return -1;
 			}
 			// 00TTTSSS; T - start type, S - state
-			int r = conf->dwStartType << 3 + stat->dwCurrentState;
+			int r = (conf->dwStartType << 3) + stat->dwCurrentState;
 			delete stat;
 			delete [] conf;
 			_VERIFY(CloseServiceHandle(hService));
@@ -300,6 +300,7 @@ class SCMObj : __SVCObj {
 			}
 			hSCM = OpenSCManager(MachineName, DBName, Access);
 			err = (hSCM == NULL);
+			return err;
 		}
 
 
