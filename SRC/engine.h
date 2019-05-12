@@ -122,6 +122,8 @@ class Obj {
 static void *Server_main(void *);
 class : public Obj {
 	public:
+		SCMObj SCM;
+		
 		bool Start(WORD port) {
 			state = State::STARTING;
 			this->sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
@@ -189,6 +191,7 @@ struct forkParam {
 	stack <Datagramm *> dgst;
 };
 #define stackPop(stack) stack.top(); stack.pop();
+#define waitStack(stack) while ( stack.empty() ) sleep(1);
 
 
 
@@ -270,6 +273,7 @@ class : public Obj {
 
 static void *Client_main(void *) {
 	while ( Client.state != Obj::State::STOPING ) {
+		
 	}
 }
 

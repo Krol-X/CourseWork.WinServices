@@ -348,6 +348,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 		case WM_SIZE:
 			//RefreshWindow(hWnd);
 			break;
+			
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			break;
