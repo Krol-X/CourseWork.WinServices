@@ -9,15 +9,46 @@
 #include <commctrl.h>
 #include "resource.h"
 
+
 STRINGTABLE {
 	IDS_WNDCLASS,                      "KSvcCtl"
 	IDS_START,                         "Запустить"
 	IDS_CONNECT,                       "Соединиться"
 	IDS_STOP,                          "Остановить"
 	IDS_ERROR,                         "Ошибка"
-	IDS_ERRSTART                       "Не удалось запустить сервер!"
-	IDS_ERRCONNECT                     "Не удалось подключится к серверу!"
+	IDS_ERRSTART,                      "Не удалось запустить сервер!"
+	IDS_ERRCONNECT,                    "Не удалось подключится к серверу!"
+	IDS_UNKNOWN,                       "Неизвестно"
 }
+
+
+STRINGTABLE {
+	IDS_COL_NAME,                      "Внутр. имя"
+	IDS_COL_FULLNAME,                  "Имя"
+	IDS_COL_STATUS,                    "Статус"
+	IDS_COL_RUNTYPE,                   "Тип запуска"
+}
+
+
+STRINGTABLE {
+	IDS_STATE_STOPPED,                 "Остановлена"
+	IDS_STATE_STARTING,                "Запускается"
+	IDS_STATE_STOPING,                 "Останавливается"
+	IDS_STATE_RUNNING,                 "Запущена"
+	IDS_STATE_CONTINUING,              "Возобновляется"
+	IDS_STATE_PAUSING,                 "Приостонавливается"
+	IDS_STATE_PAUSED,                  "Приостановлена"
+}
+
+
+STRINGTABLE {
+	IDS_RUNTYPE_BOOT,                  "При загрузке"
+	IDS_RUNTYPE_SYSTEM,                "Системный"
+	IDS_RUNTYPE_AUTO,                  "Автоматический"
+	IDS_RUNTYPE_DEMAND,                "Вручную"
+	IDS_RUNTYPE_DISABLED,              "Запрет"
+}
+
 
 IDD_CHOOSE DIALOG 1, 1, 141, 90
 STYLE DS_SETFONT | DS_CENTER | WS_VISIBLE | WS_CAPTION | WS_SYSMENU |
@@ -35,3 +66,21 @@ FONT 10, "Sans serif" {
 	PUSHBUTTON  "",       IDD1_STOP,   75,  68, 62, 14
 }
 
+
+IDM_MAINMENU MENU {
+	MENUITEM "Обновить",                             IDM_REFRESH
+}
+
+
+IDM_POPUPMENU MENU DISCARDABLE {
+	POPUP "" {
+		MENUITEM "Запустить",                        IDM_START
+		MENUITEM "Приостановить",                    IDM_PAUSE
+		MENUITEM "Возобновить",                      IDM_RESUME
+		MENUITEM "Остановить",                       IDM_STOP
+		MENUITEM SEPARATOR
+		MENUITEM "Тип запуска: АВТОМАТИЧЕСКИ",       IDM_AUTO
+		MENUITEM "Тип запуска: ВРУЧНУЮ",             IDM_DEMAND
+		MENUITEM "Тип запуска: ЗАПРЕТ",              IDM_DISABLED
+	}
+}

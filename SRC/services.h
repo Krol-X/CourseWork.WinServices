@@ -122,6 +122,7 @@ class ServiceObj : __SVCObj {
 		extends(Status, ServiceObj)
 	public:
 		operator int() {
+			int r = 0;
 			SC_HANDLE hService;
 			hService = OpenService(self->hSCM, self->name,
 			                       SERVICE_QUERY_STATUS|SERVICE_QUERY_CONFIG);
@@ -132,24 +133,25 @@ class ServiceObj : __SVCObj {
 			LPSERVICE_STATUS stat = new SERVICE_STATUS;
 			if (!QueryServiceStatus(hService, stat)) {
 				self->err = true;
-				return -1;
+				r|=0x40;
 			}
 			// 2. Get service run config
 			DWORD cbNeeded;
 			if (!QueryServiceConfig(hService, NULL, 0, &cbNeeded)) {
 				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
 					self->err = true;
-					return -1;
+					r|=0x80;
 				}
 			}
 			LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG)
 			                              new char[cbNeeded];
 			if (!QueryServiceConfig(hService, conf, cbNeeded, &cbNeeded)) {
 				self->err = true;
-				return -1;
+				r|=0x80;
 			}
-			// 00TTTSSS; T - start type, S - state
-			int r = (conf->dwStartType << 3) + stat->dwCurrentState;
+			// tsTTTSSS; T - start type, S - state,
+			// t - err get type, s - err get state
+			r = (conf->dwStartType << 3) + stat->dwCurrentState;
 			delete stat;
 			delete [] conf;
 			_VERIFY(CloseServiceHandle(hService));

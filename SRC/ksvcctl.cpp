@@ -21,8 +21,9 @@
 INT_PTR CALLBACK ChooseDlgProc(HWND, UINT, WPARAM, LPARAM);
 ATOM RegisterWndClass();
 HWND InitClientWnd();
-bool InitListView(HWND hWnd);
+bool InitListView(HWND);
 LRESULT CALLBACK ClientWndProc(HWND, UINT, WPARAM, LPARAM);
+void RefreshWindow(HWND);
 
 
 //
@@ -110,7 +111,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
-			hClientWnd = InitClientWnd();
+			if (!hClientWnd)
+				if ( !(hClientWnd = InitClientWnd()) )
+					return EXIT_FAILURE;
+			ShowWindow(hClientWnd, SW_SHOW);
+			UpdateWindow(hClientWnd);
+			RefreshWindow(hClientWnd);
 			MSG msg;
 			while (GetMessage(&msg, NULL, 0, 0)) {
 				TranslateMessage(&msg);
@@ -132,7 +138,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 // ¬ќ«¬–ј“»“№: флаг успеха выполнени€ операции
 //
 ATOM RegisterWndClass() {
-	// –егистрируем класс окна
 	WNDCLASSEX  wcex;
 	ATOM        aReturn;
 
@@ -144,7 +149,7 @@ ATOM RegisterWndClass() {
 	wcex.hInstance       = hInst;
 	wcex.hCursor         = LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground   = (HBRUSH) (COLOR_WINDOW + 1);
-	wcex.lpszMenuName    = 0;
+	wcex.lpszMenuName    = MAKEINTRESOURCE(IDM_MAINMENU);
 	wcex.lpszClassName   = szWndClass;
 	wcex.hIcon           = LoadIcon(hInst, IDI_APPLICATION);
 	wcex.hIconSm         = (HICON) LoadImage(hInst,
@@ -162,7 +167,7 @@ ATOM RegisterWndClass() {
 		wc.hIcon          = LoadIcon(hInst, IDI_APPLICATION);
 		wc.hCursor        = LoadCursor(NULL, IDC_ARROW);
 		wc.hbrBackground  = (HBRUSH) (COLOR_WINDOW + 1);
-		wc.lpszMenuName   = 0;
+		wc.lpszMenuName   = MAKEINTRESOURCE(IDM_MAINMENU);
 		wc.lpszClassName  = szWndClass;
 		aReturn = RegisterClass(&wc);
 	}
@@ -253,18 +258,19 @@ idd1_server:
 // ¬ќ«¬–ј“»“№: идетификатор окна / NULL
 //
 HWND InitClientWnd() {
+	bool err = false;
 	HWND hWnd = CreateWindow(szWndClass, szWndClass,
 	                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0,
 	                         640, 480, NULL, NULL, hInst, NULL);
 	if (hWnd) {
 		if (!InitListView(hWnd))
-			return NULL;
-		ShowWindow(hWnd, SW_SHOW);
-		UpdateWindow(hWnd);
-		//RefreshWindow(hWnd);
-		return hWnd;
-	} else
-		return NULL;
+			err = true;
+		if (err) {
+			DestroyWindow(hWnd);
+			hWnd = NULL;
+		}
+	}
+	return hWnd;
 }
 
 
@@ -277,18 +283,19 @@ HWND InitClientWnd() {
 // ¬ќ«¬–ј“»“№: флаг успеха выполнени€ операции
 //
 bool InitListView(HWND hWnd) {
-	INT dwStyle = WS_TABSTOP |
-	              WS_CHILD |
-	              WS_VISIBLE |
-	              LVS_SHOWSELALWAYS |
-	              LVS_SINGLESEL |
-	              LVS_REPORT |
-	              LVS_OWNERDATA;
+	INT dwStyle = WS_TABSTOP
+	              | WS_CHILD
+	              | WS_VISIBLE
+	              | LVS_SHOWSELALWAYS
+	              | LVS_SINGLESEL
+	              | LVS_REPORT
+	              | LVS_OWNERDATA
+	              ;
 	hListView = CreateWindowEx(WS_EX_CLIENTEDGE,
 	                           WC_LISTVIEW,
 	                           (PCTSTR) NULL,
 	                           dwStyle,
-	                           0, 0, 0, 0,
+	                           0, 0, 10, 10,
 	                           hWnd,
 	                           (HMENU) IDC_LISTVIEW,
 	                           hInst,
@@ -308,7 +315,6 @@ bool InitListView(HWND hWnd) {
 			ListView_InsertColumn(hListView, i, &lvColumn);
 		}
 	}
-	ListView_SetItemCount(hListView, 1);
 	return (hListView != NULL);
 }
 
@@ -326,6 +332,8 @@ bool InitListView(HWND hWnd) {
 //
 LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
                                LPARAM lParam) {
+	TCHAR buf[MAX_LOADSTRING];
+	pListItem item;
 	switch (message) {
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
@@ -336,23 +344,98 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 		case WM_NOTIFY:
 			LV_DISPINFO *lpdi;
 			lpdi = (LV_DISPINFO*) lParam;
-			if (lpdi->item.mask & LVIF_TEXT) {
-				switch(lpdi->item.iSubItem) {
-					default:
-						lpdi->item.pszText = "1";
+			NMITEMACTIVATE *lpNMITEMACTIVATE;
+			lpNMITEMACTIVATE = (NMITEMACTIVATE*) lParam;
+			UINT itemid;
+			if ((((LPNMHDR)lParam)->hwndFrom) == hListView) {
+				switch (lpdi->hdr.code) {
+					case LVN_GETDISPINFO:
+						itemid = lpdi->item.iItem;
+						if (lpdi->item.mask & LVIF_TEXT) {
+							if (Client.list.empty()) {
+								//lpdi->item.pszText = (LPSTR) szNull;
+								break;
+							}
+							item = Client.list[itemid];
+							switch(lpdi->item.iSubItem) {
+								case 0:
+									lpdi->item.pszText = item->name;
+									break;
+								case 1:
+									lpdi->item.pszText = item->viewname;
+									break;
+								case 2:
+									if (item->state & 0x40)
+										LoadString(hInst, IDS_UNKNOWN,
+										           buf, MAX_LOADSTRING);
+									else
+										LoadString(hInst,
+										           IDS_STATE+(item->state & 7),
+										           buf, MAX_LOADSTRING);
+									lpdi->item.pszText = buf;
+									break;
+								case 3:
+									if (item->state & 0x80)
+										LoadString(hInst, IDS_UNKNOWN,
+										           buf, MAX_LOADSTRING);
+									else
+										LoadString(hInst,
+										           IDS_RUNTYPE +
+										           ((item->state>>3) & 7), buf,
+										           MAX_LOADSTRING);
+									lpdi->item.pszText = buf;
+									break;
+							}
+						}
+						break;
+					case NM_RCLICK:
+						HMENU hmenuPopup;
+						hmenuPopup = GetSubMenu(
+						                 LoadMenu(hInst, "IDM_POPUPMENU"), 0);
+						if (!hmenuPopup)
+							break;
+						POINT cursor;
+						GetCursorPos(&cursor);
+						TrackPopupMenu(hmenuPopup,
+						               TPM_LEFTALIGN | TPM_RIGHTBUTTON,
+						               cursor.x, cursor.y, 0, hWnd, NULL);
+						DestroyMenu(hmenuPopup);
 						break;
 				}
 			}
 			break;
 
 		case WM_SIZE:
-			//RefreshWindow(hWnd);
+			RefreshWindow(hWnd);
 			break;
-			
+
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			break;
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+
+//
+// ‘”Ќ ÷»я: RefreshWindow(HWND)
+//
+// Ќј«Ќј„≈Ќ»≈: обновл€ет элементы окна клиента
+//
+void RefreshWindow(HWND hWnd) {
+	// 1. ”станавливаем количество записей ListView
+	ListView_SetItemCount(hListView, Client.list.size());
+	// 2. »змен€ем размеры ListView
+	RECT rc, sbrc;
+	GetClientRect(hWnd, &rc);
+	LONG sbheight = (sbrc.bottom - sbrc.top);
+	MoveWindow(hListView,
+	           rc.left,
+	           rc.top,
+	           rc.right - rc.left,
+	           rc.bottom - rc.top - sbheight,
+	           true);
+	for (int i=0; i<IDS_COL_num; i++)
+		ListView_SetColumnWidth(hListView, i, LVSCW_AUTOSIZE_USEHEADER);
 }
 

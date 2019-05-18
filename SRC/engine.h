@@ -60,6 +60,14 @@ struct Address {
 
 
 
+typedef struct _ListItem {
+	BYTE state;
+	char *name, *viewname;
+	char data[];
+} ListItem, *pListItem;
+
+
+
 class Obj {
 	protected:
 		WORD port;
@@ -262,13 +270,16 @@ class : public Obj {
 		UINT ip;
 		Address a;
 	public:
+		vector<pListItem> list;
+		
+		
 		void Init(int addr, int port) {
 			a.addr = addr;
 			a.port = port;
 		}
 
 
-		void *getList(int &size) {
+		bool getList() {
 			int sz = 0, _try = 0;
 			Datagram *buf = (Datagram *) new char[BUF_SIZE];
 			Datagram *dg = (Datagram *) new char[RESERVED_BYTES + sz];
@@ -276,6 +287,7 @@ class : public Obj {
 			dg->sz = sz;
 			for (int i=0; i<MAX_TRYING; i++) {
 				Send(a, dg, RESERVED_BYTES + sz);
+				_sleep(100);
 				clock_t start = clock();
 				while ( ( sz = Receive(a, buf, BUF_SIZE) ) == 0
 				        && (!chkhdr(buf->hdr)) ) {
@@ -289,14 +301,27 @@ class : public Obj {
 			}
 			delete dg;
 			if ( chkhdr(buf->hdr) && buf->cmd == CMD_LIST ) {
-				size = buf->sz;
-				void *x = (void *) new char[size];
-				memcpy(x, &buf->data, size);
+				list.clear();
+				BYTE *data = (BYTE *) &buf->data;
+				char *str1, *str2;
+				pListItem item;
+				for (int i=0; i<buf->sz; i++) {
+					str1 = (char *) &data[1];
+					str2 = (char *) &data[strlen(str1)+1];
+					int len1 = strlen(str1);
+					int len2 = strlen(str2);
+					item = (pListItem) new char[1+4+4+len1+len2+2];
+					item->state = data[0];
+					item->name = (char *) &item->data;
+					item->viewname = (char *) &item->data[len1];
+					strcpy(item->name, str1);
+					strcpy(item->viewname, str2);
+					list.insert(list.end(), item);
+				}
 				delete[] buf;
-				return x;
+				return true;
 			}
-			size = 0;
-			return 0;
+			return false;
 		}
 
 
