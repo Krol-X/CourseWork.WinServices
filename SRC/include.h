@@ -75,5 +75,6 @@ using namespace std;
 #include <commdlg.h>
 
 #include "extends.h"
+#include "cplog.h"
 
 #endif

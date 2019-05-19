@@ -39,14 +39,15 @@ const TCHAR *szConfigFile = TEXT("ksvcctl.cfg");
 HINSTANCE hInst;
 HWND hClientWnd;
 HWND hListView;
+Address addr;
 TCHAR szWndClass[MAX_LOADSTRING];
 TCHAR szStart[MAX_LOADSTRING];
 TCHAR szConnect[MAX_LOADSTRING];
 TCHAR szStop[MAX_LOADSTRING];
 TCHAR szError[MAX_LOADSTRING];
 TCHAR szErrStart[MAX_LOADSTRING];
-TCHAR szErrConnect[MAX_LOADSTRING];
-
+//TCHAR szErrConnect[MAX_LOADSTRING];
+TCHAR szErrLdList[MAX_LOADSTRING];
 
 
 //
@@ -92,13 +93,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	hClientWnd = 0;
 	LoadString(hInstance, IDS_WNDCLASS, szWndClass, MAX_LOADSTRING);
 	if (!RegisterWndClass()) {
-		MessageBoxA(0, "Cannot register windows class!",
-		            szError, MB_ICONERROR | MB_OK);
+		MessageBox(0, "Cannot register windows class!",
+		           szError, MB_ICONERROR | MB_OK);
 		return EXIT_FAILURE;
 	}
 	if (!initializeSockets()) {
-		MessageBoxA(0, "Cannot initialize sockets!",
-		            szError, MB_ICONERROR | MB_OK);
+		MessageBox(0, "Cannot initialize sockets!",
+		           szError, MB_ICONERROR | MB_OK);
 		return EXIT_FAILURE;
 	}
 	LoadString(hInstance, IDS_START, szStart, MAX_LOADSTRING);
@@ -106,14 +107,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LoadString(hInstance, IDS_STOP, szStop, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERROR, szError, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERRSTART, szErrStart, MAX_LOADSTRING);
-	LoadString(hInstance, IDS_ERRCONNECT, szErrConnect, MAX_LOADSTRING);
+//	LoadString(hInstance, IDS_ERRCONNECT, szErrConnect, MAX_LOADSTRING);
+	LoadString(hInstance, IDS_ERRLDLIST, szErrLdList, MAX_LOADSTRING);
 	int r;
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
-			if (!hClientWnd)
-				if ( !(hClientWnd = InitClientWnd()) )
-					return EXIT_FAILURE;
+			Client.Init(addr);
+			if ( !(hClientWnd = InitClientWnd()) )
+				return EXIT_FAILURE;
 			ShowWindow(hClientWnd, SW_SHOW);
 			UpdateWindow(hClientWnd);
 			RefreshWindow(hClientWnd);
@@ -124,6 +126,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			}
 		}
 	} while (r);
+	if (Server.Active())
+		Server.Stop();
 	shutdownSockets();
 	return EXIT_SUCCESS;
 }
@@ -194,7 +198,6 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDD1_START:
-					Address addr;
 					BOOL fError;
 
 					SendMessage(GetDlgItem(hDlg, IDD1_IP),
@@ -335,9 +338,18 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 	TCHAR buf[MAX_LOADSTRING];
 	pListItem item;
 	switch (message) {
+		case WM_CREATE:
+			if (!Client.getList())
+				MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
+			break;
+
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
-
+				case IDM_REFRESH:
+					if (!Client.getList())
+						MessageBox(hWnd, szErrLdList,
+						           szError, MB_ICONERROR | MB_OK);
+					break;
 			}
 			break;
 

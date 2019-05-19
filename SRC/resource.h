@@ -19,7 +19,8 @@
 #define IDS_CONNECT                    2001
 #define IDS_STOP                       2002
 #define IDS_ERROR                      2003
-#define IDS_ERRCONNECT                 2004
+//#define IDS_ERRCONNECT                 2004
+#define IDS_ERRLDLIST                  2004
 #define IDS_ERRSTART                   2005
 #define IDS_UNKNOWN                    2006
 

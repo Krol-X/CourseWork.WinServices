@@ -7,6 +7,22 @@
 //
 #include "include.h"
 
+
+char *genLogFName();
+LogObj Log(genLogFName());
+
+
+char *genLogFName() {
+	char *buf = new char[25];
+	time_t t = time(0);
+	struct tm* aTm = localtime(&t);
+	sprintf(buf, "ksvc %02d%02d%04d_%02d%02d%02d.log",
+	        aTm->tm_mday, aTm->tm_mon+1, aTm->tm_year+1900,
+	        aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
+	return buf;
+}
+
+
 #define RESERVED_BYTES 4+4+1
 struct Datagram {
 	char hdr[4];
@@ -133,8 +149,11 @@ class : public Obj {
 
 		bool Start(WORD port) {
 			state = STARTING;
+			Log.Write("Starting server...");
+			Log.WriteInt("Port - ", port);
 			this->sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 			if ( sock <= 0 ) {
+				Log.Write("Failed to create socket");
 				printf( "failed to create socket\n" );
 				sock = 0;
 				return false;
@@ -146,6 +165,7 @@ class : public Obj {
 			address.sin_port = htons( (unsigned short) port );
 			if ( bind( sock, (const sockaddr*) &address,
 			           sizeof(sockaddr_in) ) < 0 ) {
+				Log.Write("Failed to bind socket");
 				printf( "failed to bind socket\n" );
 				Stop();
 				return false;
@@ -154,6 +174,7 @@ class : public Obj {
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 			int nonBlocking = 1;
 			if ( fcntl( sock, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 ) {
+				Log.Write("failed to set non-blocking socket");
 				printf( "failed to set non-blocking socket\n" );
 				Stop();
 				return false;
@@ -161,6 +182,7 @@ class : public Obj {
 #elif PLATFORM == PLATFORM_WINDOWS
 			DWORD nonBlocking = 1;
 			if ( ioctlsocket( sock, FIONBIO, &nonBlocking ) != 0 ) {
+				Log.Write("failed to set non-blocking socket");
 				printf( "failed to set non-blocking socket\n" );
 				Stop();
 				return false;
@@ -168,6 +190,7 @@ class : public Obj {
 #endif
 			pthread_create(&thr, 0, Server_main, 0);
 			state = ACTIVE;
+			Log.Write("OK");
 			return true;
 		}
 
@@ -178,6 +201,7 @@ class : public Obj {
 
 
 		void Stop() {
+			Log.Write("Stoping server...");
 			state = STOPING;
 			if ( sock != 0 ) {
 				closesocket(sock);
@@ -187,6 +211,7 @@ class : public Obj {
 				pthread_join(thr, 0);
 			}
 			state = PASSIVE;
+			Log.Write("OK");
 		}
 } Server;
 
@@ -208,8 +233,10 @@ static void *Server_fork(void *p) {
 	Datagram *data = stackPop(param->dgst);
 	DWORD size, num;
 	char *buf;
+	Log.Write("Server: new datagramm");
 	switch (data->cmd) {
 		case CMD_LIST:
+			Log.Write("Cmd - list");
 			data = (Datagram *) SCMObj().getEnum(size, num);
 			memcpy(data->hdr, DATAGRAMM_HDR, 4);
 			data->sz = size;
@@ -218,6 +245,7 @@ static void *Server_fork(void *p) {
 			// Check out datagram?
 			break;
 		case CMD_SET:
+			Log.Write("Cmd - set");
 			ServiceObj srv = SCMObj().getService(&data->data[1]);
 			srv.Status = (int) &data->data[0];
 			// Check out datagram?
@@ -271,15 +299,20 @@ class : public Obj {
 		Address a;
 	public:
 		vector<pListItem> list;
-		
-		
-		void Init(int addr, int port) {
-			a.addr = addr;
-			a.port = port;
+
+
+		void Init(Address adr) {
+			a = adr;
+			Log.Write("Client init");
+			char buf[24];
+			sprintf(buf, "Addr - %u.%u.%u.%u", a.d, a.c, a.b, a.a);
+			Log.Write(buf);
+			Log.WriteInt("Port - ", a.port);
 		}
 
 
 		bool getList() {
+			Log.Write("Client: trying to get list");
 			int sz = 0, _try = 0;
 			Datagram *buf = (Datagram *) new char[BUF_SIZE];
 			Datagram *dg = (Datagram *) new char[RESERVED_BYTES + sz];
@@ -301,6 +334,7 @@ class : public Obj {
 			}
 			delete dg;
 			if ( chkhdr(buf->hdr) && buf->cmd == CMD_LIST ) {
+				Log.Write("Client: received");
 				list.clear();
 				BYTE *data = (BYTE *) &buf->data;
 				char *str1, *str2;
@@ -319,13 +353,17 @@ class : public Obj {
 					list.insert(list.end(), item);
 				}
 				delete[] buf;
+				Log.Write("Client: OK");
 				return true;
 			}
+			Log.Write("Client: FAIL");
 			return false;
 		}
 
 
 		void set(char *srv, BYTE state) {
+			Log.Write("Client: trying to set service");
+			Log.WriteInt(strcat(srv, " "), state);
 			int sz = 1+strlen(srv)+1;
 			Datagram *dg = (Datagram *) new char[RESERVED_BYTES + sz];
 			dg->cmd = CMD_SET;
