@@ -133,6 +133,23 @@ class Obj {
 
 
 
+bool nonBlockingIO(SOCKET sock) {
+	char errBlocking[] = "failed to set non-blocking socket\n";
+#if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
+	int nonBlocking = 1;
+	if ( fcntl( sock, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 ) {
+#elif PLATFORM == PLATFORM_WINDOWS
+	DWORD nonBlocking = 1;
+	if ( ioctlsocket( sock, FIONBIO, &nonBlocking ) != 0 ) {
+#endif
+		Log.Write(errBlocking);
+		printf(errBlocking);
+		return false;
+	} else
+	return true;
+}
+
+
 static void *Server_main(void *);
 class : public Obj {
 	protected:
@@ -171,23 +188,10 @@ class : public Obj {
 				return false;
 			}
 			// set non-blocking io
-#if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
-			int nonBlocking = 1;
-			if ( fcntl( sock, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 ) {
-				Log.Write("failed to set non-blocking socket");
-				printf( "failed to set non-blocking socket\n" );
+			if (!nonBlockingIO(sock)) {
 				Stop();
 				return false;
 			}
-#elif PLATFORM == PLATFORM_WINDOWS
-			DWORD nonBlocking = 1;
-			if ( ioctlsocket( sock, FIONBIO, &nonBlocking ) != 0 ) {
-				Log.Write("failed to set non-blocking socket");
-				printf( "failed to set non-blocking socket\n" );
-				Stop();
-				return false;
-			}
-#endif
 			pthread_create(&thr, 0, Server_main, 0);
 			state = ACTIVE;
 			Log.Write("OK");
@@ -230,6 +234,7 @@ struct forkParam {
 static void *Server_fork(void *p) {
 	forkParam *param = (forkParam *) p;
 	_VERIFY( !param->dgst.empty() );
+	while (param->dgst.empty());
 	Datagram *data = stackPop(param->dgst);
 	DWORD size, num;
 	char *buf;
@@ -237,17 +242,20 @@ static void *Server_fork(void *p) {
 	switch (data->cmd) {
 		case CMD_LIST:
 			Log.Write("Cmd - list");
+			delete data;
 			data = (Datagram *) SCMObj().getEnum(size, num);
 			memcpy(data->hdr, DATAGRAMM_HDR, 4);
 			data->sz = size;
 			data->cmd = CMD_LIST;
 			_VERIFY(Server.Send(param->sender, buf, size));
 			// Check out datagram?
+			delete data;
 			break;
 		case CMD_SET:
 			Log.Write("Cmd - set");
 			ServiceObj srv = SCMObj().getService(&data->data[1]);
 			srv.Status = (int) &data->data[0];
+			// ...
 			// Check out datagram?
 			break;
 	}
@@ -261,11 +269,13 @@ static void *Server_main(void *) {
 	char buf[BUF_SIZE];
 	vector <forkParam> thrs;
 
-	Datagram *dg;
+	Datagram *dg = (Datagram *) buf;
 	int recived;
 	while ( Server.state != Server.State::STOPING ) {
 		if ( (recived = Server.Receive(sender, &buf, BUF_SIZE)) ) {
+			Log.Write("some datagram...");
 			if ( chkhdr(dg->hdr) ) {
+				Log.Write("Received datagram!");
 				dg = (Datagram *) new char[recived];
 				memcpy(dg, buf, recived);
 				bool founded = false;
@@ -279,6 +289,7 @@ static void *Server_main(void *) {
 				if (!founded) {
 					forkParam *param = new forkParam;
 					param->sender = sender;
+					param->dgst.push(dg);
 					thrs.insert(thrs.end(), *param);
 					pthread_create(&param->thr, 0, Server_fork, param);
 				}
@@ -301,13 +312,28 @@ class : public Obj {
 		vector<pListItem> list;
 
 
-		void Init(Address adr) {
+		bool Init(Address adr) {
 			a = adr;
-			Log.Write("Client init");
+			if (sock)
+				Done();
+			Log.Write("Client init...");
 			char buf[24];
 			sprintf(buf, "Addr - %u.%u.%u.%u", a.d, a.c, a.b, a.a);
 			Log.Write(buf);
 			Log.WriteInt("Port - ", a.port);
+			this->sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
+			if ( sock <= 0 ) {
+				Log.Write("Failed to create socket");
+				printf( "failed to create socket\n" );
+				sock = 0;
+				return false;
+			}
+			if (!nonBlockingIO(sock)) {
+				Done();
+				return false;
+			}
+			Log.Write("OK");
+			return true;
 		}
 
 
@@ -316,9 +342,11 @@ class : public Obj {
 			int sz = 0, _try = 0;
 			Datagram *buf = (Datagram *) new char[BUF_SIZE];
 			Datagram *dg = (Datagram *) new char[RESERVED_BYTES + sz];
+			memcpy(dg->hdr, DATAGRAMM_HDR, 4);
 			dg->cmd = CMD_LIST;
 			dg->sz = sz;
 			for (int i=0; i<MAX_TRYING; i++) {
+				Log.Write("Sending datagramm...");
 				Send(a, dg, RESERVED_BYTES + sz);
 				_sleep(100);
 				clock_t start = clock();
@@ -372,6 +400,16 @@ class : public Obj {
 			strcpy(&dg->data[1], srv);
 			Send(a, dg, RESERVED_BYTES + sz);
 			// Check out datagram?
+		}
+
+
+		void Done() {
+			Log.Write("Client done...");
+			if ( sock != 0 ) {
+				closesocket(sock);
+				sock = 0;
+			}
+			Log.Write("OK");
 		}
 } Client;
 

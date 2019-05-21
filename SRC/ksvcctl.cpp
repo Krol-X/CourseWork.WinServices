@@ -50,6 +50,24 @@ TCHAR szErrStart[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];
 
 
+void LoadSettings() {
+	FILE *f = fopen(szConfigFile, "rb");
+	if (f) {
+		fread(&addr, sizeof(addr), 1, f);
+		fclose(f);
+	}
+}
+
+
+void SaveSettings() {
+	FILE *f = fopen(szConfigFile, "wb");
+	if (f) {
+		fwrite(&addr, sizeof(addr), 1, f);
+		fclose(f);
+	}
+}
+
+
 //
 // Ã¿ –Œ—: inline bool initializeSockets()
 //
@@ -109,11 +127,16 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LoadString(hInstance, IDS_ERRSTART, szErrStart, MAX_LOADSTRING);
 //	LoadString(hInstance, IDS_ERRCONNECT, szErrConnect, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERRLDLIST, szErrLdList, MAX_LOADSTRING);
+	LoadSettings();
 	int r;
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
-			Client.Init(addr);
+			if (!Client.Init(addr)) {
+				MessageBox(0, "Cannot create client!",
+				           szError, MB_ICONERROR | MB_OK);
+				continue;
+			}
 			if ( !(hClientWnd = InitClientWnd()) )
 				return EXIT_FAILURE;
 			ShowWindow(hClientWnd, SW_SHOW);
@@ -124,11 +147,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
+			Client.Done();
 		}
 	} while (r);
 	if (Server.Active())
 		Server.Stop();
 	shutdownSockets();
+	SaveSettings();
 	return EXIT_SUCCESS;
 }
 
@@ -190,6 +215,9 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
                                LPARAM lParam) {
 	switch (msg) {
 		case WM_INITDIALOG:
+			SendMessage(GetDlgItem(hDlg, IDD1_IP),
+			            IPM_SETADDRESS, 0, (LPARAM) addr.addr);
+			SetDlgItemInt(hDlg, IDD1_PORT, addr.port, false);
 			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
 			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
 			EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
