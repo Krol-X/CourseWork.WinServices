@@ -50,6 +50,11 @@ TCHAR szErrStart[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];
 
 
+//
+// ФУНКЦИЯ: void LoadSettings()
+//
+// НАЗНАЧЕНИЕ: загружает настройки из файла конфигурации
+//
 void LoadSettings() {
 	FILE *f = fopen(szConfigFile, "rb");
 	if (f) {
@@ -59,6 +64,11 @@ void LoadSettings() {
 }
 
 
+//
+// ФУНКЦИЯ: void SaveSettings()
+//
+// НАЗНАЧЕНИЕ: сохраняет настройки в файл конфигурации
+//
 void SaveSettings() {
 	FILE *f = fopen(szConfigFile, "wb");
 	if (f) {
@@ -69,38 +79,9 @@ void SaveSettings() {
 
 
 //
-// МАКРОС: inline bool initializeSockets()
+// ФУНКЦИЯ: int WinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 //
-// ДЕЙСТВИЕ: инициализирует программу для работы с сокетами
-//
-inline bool initializeSockets() {
-#if PLATFORM == PLATFORM_WINDOWS
-	WSADATA WsaData;
-	return WSAStartup( MAKEWORD(2,2), &WsaData ) == NO_ERROR;
-#else
-	return true;
-#endif
-}
-
-
-
-//
-// МАКРОС: inline void shutdownSockets()
-//
-// ДЕЙСТВИЕ: финализирует работу программы с сокетами
-//
-inline void shutdownSockets() {
-#if PLATFORM == PLATFORM_WINDOWS
-	WSACleanup();
-#endif
-}
-
-
-
-//
-//   ФУНКЦИЯ: int WinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
-//
-//   НАЗНАЧЕНИЕ: точка входа для приложения
+// НАЗНАЧЕНИЕ: точка входа для приложения
 //
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                      LPTSTR    lpCmdLine, int       nCmdShow) {
@@ -158,7 +139,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 }
 
 
-
 //
 // ФУНКЦИЯ: ATOM RegisterWndClass()
 //
@@ -204,7 +184,6 @@ ATOM RegisterWndClass() {
 }
 
 
-
 //
 // ФУНКЦИЯ: INT_PTR CALLBACK ChooseDlgProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -226,6 +205,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDD1_START:
+					SaveSettings();
 					BOOL fError;
 
 					SendMessage(GetDlgItem(hDlg, IDD1_IP),
@@ -280,7 +260,6 @@ idd1_server:
 }
 
 
-
 //
 // ФУНКЦИЯ: WHND InitClientWnd()
 //
@@ -303,7 +282,6 @@ HWND InitClientWnd() {
 	}
 	return hWnd;
 }
-
 
 
 //
@@ -348,7 +326,6 @@ bool InitListView(HWND hWnd) {
 	}
 	return (hListView != NULL);
 }
-
 
 
 //

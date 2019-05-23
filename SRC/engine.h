@@ -12,6 +12,11 @@ char *genLogFName();
 LogObj Log(genLogFName());
 
 
+//
+// ФУНКЦИЯ: char *genLogFName()
+//
+// НАЗНАЧЕНИЕ: генерирует имя файла лога
+//
 char *genLogFName() {
 	char *buf = new char[25];
 	time_t t = time(0);
@@ -32,7 +37,7 @@ struct Datagram {
 };
 
 
-#define BUF_SIZE 4096
+#define BUF_SIZE RESERVED_BYTES+65536
 #define MAX_WAIT 3.0
 #define MAX_TRYING 3
 #define DATAGRAMM_HDR "\17VS\3"
@@ -42,7 +47,12 @@ struct Datagram {
 #include "services.h"
 
 
-inline bool InitializeSockets() {
+//
+// МАКРОС: inline bool initializeSockets()
+//
+// ДЕЙСТВИЕ: инициализирует программу для работы с сокетами
+//
+inline bool initializeSockets() {
 #if PLATFORM == PLATFORM_WINDOWS
 	WSADATA WsaData;
 	return WSAStartup( MAKEWORD(2,2), &WsaData ) == NO_ERROR;
@@ -52,13 +62,16 @@ inline bool InitializeSockets() {
 }
 
 
-
-inline void ShutdownSockets() {
+//
+// МАКРОС: inline void shutdownSockets()
+//
+// ДЕЙСТВИЕ: финализирует работу программы с сокетами
+//
+inline void shutdownSockets() {
 #if PLATFORM == PLATFORM_WINDOWS
 	WSACleanup();
 #endif
 }
-
 
 
 struct Address {
@@ -73,7 +86,6 @@ struct Address {
 		return (x.addr == addr) && (x.port == port);
 	}
 };
-
 
 
 typedef struct _ListItem {
@@ -132,7 +144,11 @@ class Obj {
 };
 
 
-
+//
+// ФУНКЦИЯ: bool nonBlockingIO(SOCKET)
+//
+// НАЗНАЧЕНИЕ: устанавливает неблокирующий
+//
 bool nonBlockingIO(SOCKET sock) {
 	char errBlocking[] = "failed to set non-blocking socket\n";
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
@@ -146,8 +162,9 @@ bool nonBlockingIO(SOCKET sock) {
 		printf(errBlocking);
 		return false;
 	} else
-	return true;
+		return true;
 }
+
 
 
 static void *Server_main(void *);
@@ -231,6 +248,11 @@ struct forkParam {
 
 
 
+//
+// ФУНКЦИЯ: static void *Server_fork(void *p)
+//
+// НАЗНАЧЕНИЕ: обработка соответствующей комманды
+//
 static void *Server_fork(void *p) {
 	forkParam *param = (forkParam *) p;
 	_VERIFY( !param->dgst.empty() );
@@ -238,12 +260,20 @@ static void *Server_fork(void *p) {
 	Datagram *data = stackPop(param->dgst);
 	DWORD size, num;
 	char *buf;
+	SCMObj scm;
 	Log.Write("Server: new datagramm");
 	switch (data->cmd) {
 		case CMD_LIST:
 			Log.Write("Cmd - list");
 			delete data;
-			data = (Datagram *) SCMObj().getEnum(size, num);
+			Log.Write("Getting enum...");
+			scm.Init();
+			data = (Datagram *) scm.getEnum(size, num);
+			if (!data) {
+				Log.Write("FAIL");
+				break;
+			}
+			Log.Write("Make package...");
 			memcpy(data->hdr, DATAGRAMM_HDR, 4);
 			data->sz = size;
 			data->cmd = CMD_LIST;
@@ -262,8 +292,15 @@ static void *Server_fork(void *p) {
 	return 0;
 }
 
+
+
 #define chkhdr(hdr) memcmp(hdr, DATAGRAMM_HDR, 4) == 0
 
+//
+// ФУНКЦИЯ: static void *Server_main(void *)
+//
+// НАЗНАЧЕНИЕ: приём и раздача сообщений дочерним потокам
+//
 static void *Server_main(void *) {
 	Address sender;
 	char buf[BUF_SIZE];
@@ -348,7 +385,7 @@ class : public Obj {
 			for (int i=0; i<MAX_TRYING; i++) {
 				Log.Write("Sending datagramm...");
 				Send(a, dg, RESERVED_BYTES + sz);
-				_sleep(100);
+				_sleep(50);
 				clock_t start = clock();
 				while ( ( sz = Receive(a, buf, BUF_SIZE) ) == 0
 				        && (!chkhdr(buf->hdr)) ) {
@@ -356,7 +393,10 @@ class : public Obj {
 					double seconds = (double)(end - start) / CLOCKS_PER_SEC;
 					if (seconds>=MAX_WAIT)
 						break;
+					_sleep(50);
 				}
+				if (sz)
+					Log.Write("some datagram...");
 				if ( chkhdr(buf->hdr) )
 					break;
 			}

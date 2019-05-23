@@ -1,4 +1,7 @@
 DEV/
+*.zip
+*.rar
+*.7z
 #Ignore thumbnails created by Windows
 Thumbs.db
 #Ignore files built by Visual Studio

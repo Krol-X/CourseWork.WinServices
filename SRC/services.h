@@ -316,14 +316,13 @@ class SCMObj : __SVCObj {
 				return 0;
 			DWORD cbNeeded;
 			DWORD dwResumeHandle = 0;
-			_VERIFY(EnumServicesStatus(hSCM, 0, 0, 0, 0, &cbNeeded, 0, 0));
-			LPENUM_SERVICE_STATUS stat = (LPENUM_SERVICE_STATUS)
-			                             new char[cbNeeded];
+                        LPENUM_SERVICE_STATUS stat = (LPENUM_SERVICE_STATUS)
+			                             new char[BUF_SIZE];
 			if (!EnumServicesStatus(hSCM, SERVICE_WIN32, SERVICE_STATE_ALL,
-			                        stat, cbNeeded, &cbNeeded,
+			                        stat, BUF_SIZE, &cbNeeded,
 			                        &num, &dwResumeHandle))
 				return 0;
-			char *tmp = new char[cbNeeded];
+			char *tmp = new char[BUF_SIZE];
 			size = 0;
 #define put(x) tmp[size++] = x;
 #define puts(x) strcpy(tmp+size, x); size+=strlen(x)+1;
