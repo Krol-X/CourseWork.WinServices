@@ -28,23 +28,8 @@ char *genLogFName() {
 }
 
 
-#define RESERVED_BYTES 4+4+1
-struct Datagram {
-	char hdr[4];
-	DWORD sz;
-	BYTE cmd;
-	char data[];
-};
-
-
-#define BUF_SIZE RESERVED_BYTES+65536
-#define MAX_WAIT 3.0
-#define MAX_TRYING 3
-#define DATAGRAMM_HDR "\17VS\3"
-#define CMD_LIST   0x1A
-#define CMD_SET    0x2B
-
-#include "services.h"
+#define stackPop(stack) stack.top(); stack.pop();
+#define waitStack(stack) while ( stack.empty() ) sleep(1);
 
 
 //
@@ -85,7 +70,37 @@ struct Address {
 	bool operator == (Address &x) {
 		return (x.addr == addr) && (x.port == port);
 	}
+	bool operator != (Address &x) {
+		return !(*this == x);
+	}
 };
+
+
+#define RESERVED_BYTES 4+4+2+1
+#define BUF_SIZE RESERVED_BYTES+65536
+struct Datagram {
+	char hdr[4];
+	DWORD sz;
+	WORD id;
+	BYTE cmd;
+	char data[];
+};
+#define MAX_WAIT 3.0
+#define MAX_TRY 3
+#define SLEEP_TIME 50
+#define DATAGRAMM_HDR "\17VS\3"
+#define CMD_ANY      0x00
+#define CMD_CHECKOUT 0x80
+#define CMD_LIST     0x1A
+#define CMD_SET      0x2B
+
+#include "services.h"
+
+typedef struct _Postponed {
+	Address sender;
+	Datagram* dg;
+	int sz;
+} Postponed, *pPostponed;
 
 
 typedef struct _ListItem {
@@ -99,6 +114,7 @@ typedef struct _ListItem {
 class Obj {
 	protected:
 		WORD port;
+		vector<Postponed> postponed;
 	public:
 		HWND hwnd;
 		int sock;
@@ -140,6 +156,62 @@ class Obj {
 			                         (const sockaddr*)&address,
 			                         sizeof(sockaddr_in) );
 			return sent_bytes == size;
+		}
+
+
+#define chkhdr(hdr) memcmp(hdr, DATAGRAMM_HDR, 4) == 0
+		Datagram *NextDatagram(Address sender, int &sz,
+		                       BYTE reqcmd, DWORD minid ) {
+			Address _sender;
+			char buf[BUF_SIZE];
+			Datagram *dg = (Datagram *) buf;
+			Postponed postpone;
+
+			if (postponed.empty()) {
+				sz = Receive(_sender, dg, BUF_SIZE);
+				if (sz<RESERVED_BYTES || !chkhdr(dg->hdr)) {
+					sz = 0;
+					return 0;
+				}
+				dg = (Datagram *) new char[sz];
+				memcpy(dg, buf, sz);
+				if (_sender != sender) {
+					postpone.sender = _sender;
+					postpone.sz = sz;
+					postpone.dg = dg;
+					postponed.insert(postponed.end(), postpone);
+					dg = 0;
+					sz = 0;
+				}
+			} else {
+				for (vector<Postponed>::iterator i = postponed.begin();
+				        i != postponed.end(); i++) {
+					if (i->sender == sender && i->dg->cmd == reqcmd) {
+						dg = i->dg;
+						sz = i->sz;
+						postponed.erase(i);
+						if (dg->id < minid && minid != 0) {
+							dg = 0;
+							sz = 0;
+						} else
+							break;
+					}
+				}
+			}
+			return dg;
+		}
+
+
+		Datagram *Requere(Address sender, BYTE reqcmd = CMD_ANY,
+		                  DWORD minid = 0) {
+			int sz = 0;
+			for (int trycount = 0; trycount < MAX_TRY; trycount++) {
+				Datagram *dg = NextDatagram(sender, sz, reqcmd, minid);
+				if ( dg != 0 )
+					return dg;
+				_sleep(SLEEP_TIME);
+			}
+			return 0;
 		}
 };
 
@@ -237,65 +309,6 @@ class : public Obj {
 } Server;
 
 
-
-struct forkParam {
-	pthread_t thr;
-	Address sender;
-	stack <Datagram *> dgst;
-};
-#define stackPop(stack) stack.top(); stack.pop();
-#define waitStack(stack) while ( stack.empty() ) sleep(1);
-
-
-
-//
-// ‘”Õ ÷»ﬂ: static void *Server_fork(void *p)
-//
-// Õ¿«Õ¿◊≈Õ»≈: Ó·‡·ÓÚÍ‡ ÒÓÓÚ‚ÂÚÒÚ‚Û˛˘ÂÈ ÍÓÏÏ‡Ì‰˚
-//
-static void *Server_fork(void *p) {
-	forkParam *param = (forkParam *) p;
-	_VERIFY( !param->dgst.empty() );
-	while (param->dgst.empty());
-	Datagram *data = stackPop(param->dgst);
-	DWORD size, num;
-	char *buf;
-	SCMObj scm;
-	Log.Write("Server: new datagramm");
-	switch (data->cmd) {
-		case CMD_LIST:
-			Log.Write("Cmd - list");
-			delete data;
-			Log.Write("Getting enum...");
-			scm.Init();
-			data = (Datagram *) scm.getEnum(size, num);
-			if (!data) {
-				Log.Write("FAIL");
-				break;
-			}
-			Log.Write("Make package...");
-			memcpy(data->hdr, DATAGRAMM_HDR, 4);
-			data->sz = size;
-			data->cmd = CMD_LIST;
-			_VERIFY(Server.Send(param->sender, buf, size));
-			// Check out datagram?
-			delete data;
-			break;
-		case CMD_SET:
-			Log.Write("Cmd - set");
-			ServiceObj srv = SCMObj().getService(&data->data[1]);
-			srv.Status = (int) &data->data[0];
-			// ...
-			// Check out datagram?
-			break;
-	}
-	return 0;
-}
-
-
-
-#define chkhdr(hdr) memcmp(hdr, DATAGRAMM_HDR, 4) == 0
-
 //
 // ‘”Õ ÷»ﬂ: static void *Server_main(void *)
 //
@@ -303,33 +316,23 @@ static void *Server_fork(void *p) {
 //
 static void *Server_main(void *) {
 	Address sender;
-	char buf[BUF_SIZE];
-	vector <forkParam> thrs;
-
-	Datagram *dg = (Datagram *) buf;
-	int recived;
+	Datagram *dg;
 	while ( Server.state != Server.State::STOPING ) {
-		if ( (recived = Server.Receive(sender, &buf, BUF_SIZE)) ) {
-			Log.Write("some datagram...");
-			if ( chkhdr(dg->hdr) ) {
-				Log.Write("Received datagram!");
-				dg = (Datagram *) new char[recived];
-				memcpy(dg, buf, recived);
-				bool founded = false;
-				for (auto &i: thrs) {
-					if (i.sender == sender) {
-						i.dgst.push(dg);
-						founded = true;
+		if ( (dg = Server.Requere(sender)) != 0 ) {
+			for (int trycount = 0; trycount < MAX_TRY; trycount++) {
+				switch (dg->cmd) {
+					case CMD_LIST:
+
 						break;
-					}
+					case CMD_SET:
+
+						break;
+					default:
+						Log.WriteInt("Unknown cmd: ", dg->cmd);
+						break;
 				}
-				if (!founded) {
-					forkParam *param = new forkParam;
-					param->sender = sender;
-					param->dgst.push(dg);
-					thrs.insert(thrs.end(), *param);
-					pthread_create(&param->thr, 0, Server_fork, param);
-				}
+				if (Server.Requere(sender)->cmd == dg->cmd | CMD_CHECKOUT)
+					break;
 			}
 		}
 	}
@@ -382,7 +385,7 @@ class : public Obj {
 			memcpy(dg->hdr, DATAGRAMM_HDR, 4);
 			dg->cmd = CMD_LIST;
 			dg->sz = sz;
-			for (int i=0; i<MAX_TRYING; i++) {
+			for (int i=0; i<MAX_TRY; i++) {
 				Log.Write("Sending datagramm...");
 				Send(a, dg, RESERVED_BYTES + sz);
 				_sleep(50);

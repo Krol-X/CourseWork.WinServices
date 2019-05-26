@@ -1,24 +1,42 @@
-// 03.05.19 _KROL
+// 25.05.19 _KROL
 // Copyright [C] 2019 Alex Krol krolmail@list.ru
 // Описание алгоритма
 
-TCP вариант
+Requere(reqcmd, minid):
+  for i=0; i<maxreq; i++:
+    if !get()
+      receive()
+    if received:
+        if datagramm.cmd==reqcmd || reqcmd == anything:
+            //if datagramm.id < minid:
+            //    continue
+            break;
+        else:
+          push(datagramm);
+    sleep(waittime);
+return datagramm;
 
-Сервер.Main:
-  Loop (Active - сбрасывается кнопкой "Стоп"):
-    if (accept): // в UDP тут просто пока не получишь какую-нибудь команду
-      new thread: client handler // 
-    sleep x
+Сервер.MainThread:
+  while (State!=STOPING):
+    for trycount = 0; trycount < MAX_TRY; trycount++:
+      if (datagramm = Requere(anything)) != 0:
+          switch datagramm.cmd:
+            List:
+              datagramm = svc.getlist();
+            Set:
+              datagramm = svc.set(datagramm.data);
+          if Requere(datagramm.cmd | 0x80)
+            break;
 
-Сервер.Thread:
-  case (cmd):
-    List: // получить список служб
-      Подготовить пакеты (в среднем ~12-14 на ограничение 1024 байт)
-    Info: // получить информацию о службе
-      1 Пакет = Имя1+Имя2+(Путь)
-      2 Пакет = Описание
-    Set:  // установить свойство службы (состояние или тип запуска)
-      1 Пакет
-    Notify: // уведомление
-      ???
-  Проверить пакеты и потерянные переслать
+Клиент.GetList:
+  for trycount = 0; trycount < MAX_TRY; trycount++:
+    if (datagramm = Request(CMD_LIST)) != 0:
+	    ...
+		return list;
+return 0;
+
+Клиент.Set:
+  for trycount = 0; trycount < MAX_TRY; trycount++:
+    if (datagramm = Request(CMD_SET, ...)) != 0:
+		return state;
+return 0;
