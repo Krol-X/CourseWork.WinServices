@@ -200,7 +200,6 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
 			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
 			EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
-			Server.hwnd = hDlg;
 			goto idd1_server;
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {

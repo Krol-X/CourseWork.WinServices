@@ -29,7 +29,7 @@ char *genLogFName() {
 
 
 #define stackPop(stack) stack.top(); stack.pop();
-#define waitStack(stack) while ( stack.empty() ) sleep(1);
+#define waitStack(stack) while ( stack.empty() ) sleep(SLEEP_TIME);
 
 
 //
@@ -76,18 +76,18 @@ struct Address {
 };
 
 
-#define RESERVED_BYTES 4+4+2+1
+#define RESERVED_BYTES 4+4+4+1
 #define BUF_SIZE RESERVED_BYTES+65536
 struct Datagram {
 	char hdr[4];
 	DWORD sz;
-	WORD id;
+	DWORD id;
 	BYTE cmd;
 	char data[];
 };
 #define MAX_WAIT 3.0
 #define MAX_TRY 3
-#define SLEEP_TIME 50
+#define SLEEP_TIME 10
 #define DATAGRAMM_HDR "\17VS\3"
 #define CMD_ANY      0x00
 #define CMD_CHECKOUT 0x80
@@ -96,10 +96,31 @@ struct Datagram {
 
 #include "services.h"
 
-typedef struct _Postponed {
-	Address sender;
+
+typedef struct _Datagram2 {
 	Datagram* dg;
 	int sz;
+} Datagram2;
+
+
+typedef struct _Postponed {
+	Address sender;
+	vector<Datagram2> dg;
+	DWORD id = 0;
+
+	Datagram2 *findDatagram(BYTE reqcmd, DWORD minid) {
+		if (dg.empty())
+			return 0;
+		for (vector<Datagram2>::iterator i = dg.begin(); i != dg.end(); i++)
+			if (i->dg->cmd == reqcmd || reqcmd == CMD_ANY)
+				if (i->dg->id >= minid) {
+					Datagram2 *dg2 = &(*i);
+					dg.erase(i);
+					return dg2;
+				}
+		// erase
+		return 0;
+	}
 } Postponed, *pPostponed;
 
 
@@ -115,8 +136,16 @@ class Obj {
 	protected:
 		WORD port;
 		vector<Postponed> postponed;
+
+		Postponed *findPostpone(Address addr) {
+			for (vector<Postponed>::iterator i = postponed.begin();
+			        i != postponed.end(); i++)
+				if (i->sender == addr)
+					return &(*i);
+			return 0;
+		}
+
 	public:
-		HWND hwnd;
 		int sock;
 
 		int Receive(Address &sender, void *data, int size) {
@@ -160,56 +189,61 @@ class Obj {
 
 
 #define chkhdr(hdr) memcmp(hdr, DATAGRAMM_HDR, 4) == 0
-		Datagram *NextDatagram(Address sender, int &sz,
-		                       BYTE reqcmd, DWORD minid ) {
+		Datagram2 *NextDatagram( Address sender, BYTE reqcmd ) {
 			Address _sender;
 			char buf[BUF_SIZE];
 			Datagram *dg = (Datagram *) buf;
-			Postponed postpone;
-
-			if (postponed.empty()) {
-				sz = Receive(_sender, dg, BUF_SIZE);
-				if (sz<RESERVED_BYTES || !chkhdr(dg->hdr)) {
-					sz = 0;
+			Datagram2 *dg2 = 0;
+			Postponed *p = findPostpone(sender);
+			if (p) {
+				dg2 = p->findDatagram(reqcmd, p->id);
+				if (dg2)
+					return dg2;
+			}
+			DWORD sz = Receive(_sender, dg, BUF_SIZE);
+			if (sz<RESERVED_BYTES || !chkhdr(dg->hdr)) {
+				return 0;
+			}
+			dg2 = new Datagram2;
+			dg2->dg = (Datagram *) new char[sz];
+			memcpy(dg2->dg, buf, sz);
+			dg2->sz = sz;
+			if (_sender != sender && reqcmd != CMD_ANY) {
+				p = findPostpone(sender);
+				if (!p) {
+					p = new Postponed;
+					p->sender = _sender;
+					p->id = 0;
+					p->dg.insert(p->dg.end(), *dg2);
+					postponed.insert(postponed.end(), *p);
 					return 0;
 				}
-				dg = (Datagram *) new char[sz];
-				memcpy(dg, buf, sz);
-				if (_sender != sender) {
-					postpone.sender = _sender;
-					postpone.sz = sz;
-					postpone.dg = dg;
-					postponed.insert(postponed.end(), postpone);
-					dg = 0;
-					sz = 0;
-				}
-			} else {
-				for (vector<Postponed>::iterator i = postponed.begin();
-				        i != postponed.end(); i++) {
-					if (i->sender == sender && i->dg->cmd == reqcmd) {
-						dg = i->dg;
-						sz = i->sz;
-						postponed.erase(i);
-						if (dg->id < minid && minid != 0) {
-							dg = 0;
-							sz = 0;
-						} else
-							break;
-					}
-				}
+				p->dg.insert(p->dg.end(), *dg2);
+				return 0;
 			}
-			return dg;
+			return dg2;
 		}
 
 
-		Datagram *Requere(Address sender, BYTE reqcmd = CMD_ANY,
-		                  DWORD minid = 0) {
+//
+// МЕТОД: Datagram *Requere(Address, BYTE)
+//
+// НАЗНАЧЕНИЕ: берёт следующую датаграмму с данной коммандой
+//
+		Datagram2 *Requere(Address sender, BYTE reqcmd = CMD_ANY) {
 			int sz = 0;
 			for (int trycount = 0; trycount < MAX_TRY; trycount++) {
-				Datagram *dg = NextDatagram(sender, sz, reqcmd, minid);
-				if ( dg != 0 )
-					return dg;
-				_sleep(SLEEP_TIME);
+				Datagram2 *dg2;
+				clock_t start = clock();
+				while ( !(dg2 = NextDatagram(sender, reqcmd)) ) {
+					clock_t end = clock();
+					double seconds = (double)(end - start) / CLOCKS_PER_SEC;
+					if (seconds>=MAX_WAIT)
+						break;
+					_sleep(SLEEP_TIME);
+				}
+				if ( dg2 != 0 )
+					return dg2;
 			}
 			return 0;
 		}
@@ -316,22 +350,44 @@ class : public Obj {
 //
 static void *Server_main(void *) {
 	Address sender;
-	Datagram *dg;
+	DWORD size, num;
+	Datagram *data;
+	Datagram2 *dg2;
+	SCMObj scm;
 	while ( Server.state != Server.State::STOPING ) {
-		if ( (dg = Server.Requere(sender)) != 0 ) {
+		if ( (dg2 = Server.Requere(sender)) != 0 ) {
 			for (int trycount = 0; trycount < MAX_TRY; trycount++) {
-				switch (dg->cmd) {
+				switch (dg2->dg->cmd) {
 					case CMD_LIST:
-
+						scm.Init();
+						data = (Datagram *) scm.getEnum(size, num);
+						if (!data) {
+							Log.Write("FAIL");
+							break;
+						}
+						Log.Write("Make package...");
+						memcpy(data->hdr, DATAGRAMM_HDR, 4);
+						data->cmd = CMD_LIST;
+						data->id = dg2->dg->id;
+						data->sz = size;
+						_VERIFY(Server.Send(sender, data, size+RESERVED_BYTES));
+						Log.Write("OK");
+						delete data;
 						break;
 					case CMD_SET:
-
+						Log.Write("Cmd - set");
+						ServiceObj *srv;
+						*srv = SCMObj().getService(&data->data[1]); // ???
+						srv->Status = (int) &data->data[0];
+						// ...
+						// Check out datagram?
 						break;
 					default:
-						Log.WriteInt("Unknown cmd: ", dg->cmd);
+						Log.WriteInt("Unknown cmd: ", dg2->dg->cmd);
 						break;
 				}
-				if (Server.Requere(sender)->cmd == dg->cmd | CMD_CHECKOUT)
+				if (Server.Requere(sender)->dg->cmd ==
+				        dg2->dg->cmd | CMD_CHECKOUT)
 					break;
 			}
 		}
@@ -388,7 +444,7 @@ class : public Obj {
 			for (int i=0; i<MAX_TRY; i++) {
 				Log.Write("Sending datagramm...");
 				Send(a, dg, RESERVED_BYTES + sz);
-				_sleep(50);
+				_sleep(SLEEP_TIME);
 				clock_t start = clock();
 				while ( ( sz = Receive(a, buf, BUF_SIZE) ) == 0
 				        && (!chkhdr(buf->hdr)) ) {
@@ -396,7 +452,7 @@ class : public Obj {
 					double seconds = (double)(end - start) / CLOCKS_PER_SEC;
 					if (seconds>=MAX_WAIT)
 						break;
-					_sleep(50);
+					_sleep(SLEEP_TIME);
 				}
 				if (sz)
 					Log.Write("some datagram...");

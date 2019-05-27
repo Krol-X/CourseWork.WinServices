@@ -24,7 +24,7 @@ HostApplication=
 UseCustomMakefile=0
 CustomMakefile=
 CommandLine=
-Folders=
+Folders=engine
 IncludeVersionInfo=0
 SupportXPThemes=1
 CompilerSet=4
@@ -72,7 +72,7 @@ BuildCmd=
 [Unit3]
 FileName=CPLOG.cpp
 CompileCpp=1
-Folder=
+Folder=engine
 Compile=1
 Link=1
 Priority=1000
@@ -82,7 +82,7 @@ BuildCmd=
 [Unit4]
 FileName=engine.h
 CompileCpp=1
-Folder=
+Folder=engine
 Compile=1
 Link=1
 Priority=1000
@@ -92,7 +92,7 @@ BuildCmd=
 [Unit5]
 FileName=CPLOG.h
 CompileCpp=1
-Folder=
+Folder=engine
 Compile=1
 Link=1
 Priority=1000
@@ -112,7 +112,7 @@ BuildCmd=
 [Unit7]
 FileName=services.h
 CompileCpp=1
-Folder=
+Folder=engine
 Compile=1
 Link=1
 Priority=1000
