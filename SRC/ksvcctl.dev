@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=1
 CompilerSet=4
 CompilerSettings=00000001g0000000001000000
-UnitCount=7
+UnitCount=8
 
 [VersionInfo]
 Major=1
@@ -111,6 +111,16 @@ BuildCmd=
 
 [Unit7]
 FileName=services.h
+CompileCpp=1
+Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit8]
+FileName=..\DEV\_INFO\netPROG\SendingAndReceivingPackets\net.h
 CompileCpp=1
 Folder=engine
 Compile=1

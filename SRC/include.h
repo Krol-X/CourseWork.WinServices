@@ -74,7 +74,11 @@ using namespace std;
 #include <commctrl.h>
 #include <commdlg.h>
 
+#include "net.h"
 #include "extends.h"
 #include "cplog.h"
+
+using namespace std;
+using namespace net;
 
 #endif

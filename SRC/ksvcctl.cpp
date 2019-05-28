@@ -97,7 +97,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		           szError, MB_ICONERROR | MB_OK);
 		return EXIT_FAILURE;
 	}
-	if (!initializeSockets()) {
+	if (!InitializeSockets()) {
 		MessageBox(0, "Cannot initialize sockets!",
 		           szError, MB_ICONERROR | MB_OK);
 		return EXIT_FAILURE;
@@ -114,13 +114,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
-			if (!Client.Init(addr)) {
-				MessageBox(0, "Cannot create client!",
-				           szError, MB_ICONERROR | MB_OK);
-				continue;
-			}
 			if ( !(hClientWnd = InitClientWnd()) )
-				return EXIT_FAILURE;
+				break;
 			ShowWindow(hClientWnd, SW_SHOW);
 			UpdateWindow(hClientWnd);
 			RefreshWindow(hClientWnd);
@@ -129,12 +124,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
-			Client.Done();
 		}
 	} while (r);
-	if (Server.Active())
-		Server.Stop();
-	shutdownSockets();
+	StopServer();
+	
+	ShutdownSockets();
 	SaveSettings();
 	return EXIT_SUCCESS;
 }
