@@ -11,8 +11,10 @@
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 #include "include.h"
-#include "engine.h"
 #include "resource.h"
+
+TCHAR szError[MAX_LOADSTRING];
+#include "engine.h"
 
 
 //
@@ -44,7 +46,6 @@ TCHAR szWndClass[MAX_LOADSTRING];
 TCHAR szStart[MAX_LOADSTRING];
 TCHAR szConnect[MAX_LOADSTRING];
 TCHAR szStop[MAX_LOADSTRING];
-TCHAR szError[MAX_LOADSTRING];
 TCHAR szErrStart[MAX_LOADSTRING];
 //TCHAR szErrConnect[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];

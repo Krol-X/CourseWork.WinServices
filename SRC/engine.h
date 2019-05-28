@@ -28,6 +28,20 @@ char *genLogFName() {
 }
 
 
+
+#ifndef countof
+#   define countof(a)	    (sizeof(a)/sizeof(a[0]))
+#endif
+int PrintError(IN DWORD dwErrorCode) {
+	TCHAR szErrorText[512];
+	if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwErrorCode, 0,
+	                   szErrorText, countof(szErrorText), NULL))
+		sprintf(szErrorText, "Error %d", dwErrorCode);
+	MessageBox(0, szErrorText, szError, MB_OK | MB_ICONERROR);
+	return 1;
+}
+
+
 #define stackPop(stack) stack.top(); stack.pop();
 #define waitStack(stack) while ( stack.empty() ) sleep(SLEEP_TIME);
 
@@ -160,8 +174,11 @@ class Obj {
 			socklen_t fromLength = sizeof( from );
 			int received_bytes = recvfrom( sock, (char*)data, size, 0,
 			                               (sockaddr*)&from, &fromLength );
-			if ( received_bytes <= 0 )
+			if ( received_bytes <= 0 ) {
+				DWORD err = GetLastError();
+				PrintError(err);
 				return 0;
+			}
 			unsigned int address = ntohl( from.sin_addr.s_addr );
 			unsigned short port = ntohs( from.sin_port );
 			sender.addr=address;
@@ -301,7 +318,7 @@ class : public Obj {
 			// bind to port
 			sockaddr_in address;
 			address.sin_family = AF_INET;
-			address.sin_addr.s_addr = INADDR_ANY;
+			address.sin_addr.s_addr = htonl( INADDR_ANY );
 			address.sin_port = htons( (unsigned short) port );
 			if ( bind( sock, (const sockaddr*) &address,
 			           sizeof(sockaddr_in) ) < 0 ) {
