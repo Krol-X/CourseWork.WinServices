@@ -59,8 +59,13 @@ TCHAR szErrLdList[MAX_LOADSTRING];
 void LoadSettings() {
 	FILE *f = fopen(szConfigFile, "rb");
 	if (f) {
-		fread(&addr, sizeof(addr), 1, f);
+		struct {
+			DWORD a;
+			WORD p;
+		} adr;
+		fread(&adr, sizeof(adr), 1, f);
 		fclose(f);
+		addr = Address(adr.a, adr.p);
 	}
 }
 
@@ -73,6 +78,10 @@ void LoadSettings() {
 void SaveSettings() {
 	FILE *f = fopen(szConfigFile, "wb");
 	if (f) {
+		struct {
+			DWORD a = addr.GetAddress();
+			WORD p = addr.GetPort();
+		} adr;
 		fwrite(&addr, sizeof(addr), 1, f);
 		fclose(f);
 	}
@@ -127,7 +136,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		}
 	} while (r);
 	StopServer();
-	
 	ShutdownSockets();
 	SaveSettings();
 	return EXIT_SUCCESS;
@@ -187,11 +195,14 @@ ATOM RegisterWndClass() {
 //
 INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
                                LPARAM lParam) {
+	BOOL fError;
 	switch (msg) {
 		case WM_INITDIALOG:
+			DWORD adr;
+			WORD port;
 			SendMessage(GetDlgItem(hDlg, IDD1_IP),
-			            IPM_SETADDRESS, 0, (LPARAM) addr.addr);
-			SetDlgItemInt(hDlg, IDD1_PORT, addr.port, false);
+			            IPM_SETADDRESS, 0, (LPARAM) addr.GetAddress());
+			SetDlgItemInt(hDlg, IDD1_PORT, addr.GetPort(), false);
 			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
 			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
 			EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
@@ -199,18 +210,17 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDD1_START:
-					SaveSettings();
-					BOOL fError;
-
 					SendMessage(GetDlgItem(hDlg, IDD1_IP),
-					            IPM_GETADDRESS, 0, (LPARAM) &addr.addr);
-					addr.port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
+					            IPM_GETADDRESS, 0, (LPARAM) &adr);
+					port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
+					addr = Address(adr, port);
+					SaveSettings();
 					if (SendMessage(GetDlgItem(hDlg, IDD1_CLIENT),
 					                BM_GETCHECK, 0L, 0L))
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
 					                BM_GETCHECK, 0L, 0L)) {
-						if (Server.Start(addr.port)) {
+						if (StartServer(addr.GetPort())) {
 							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), FALSE);
@@ -222,7 +232,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					}
 					break;
 				case IDD1_STOP:
-					Server.Stop();
+					StopServer();
 					EnableWindow(GetDlgItem(hDlg, IDD1_START), TRUE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), TRUE);
@@ -234,9 +244,9 @@ idd1_server:
 					SetWindowText(GetDlgItem(hDlg, IDD1_START), szStart);
 					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szStop);
 					EnableWindow(GetDlgItem(hDlg, IDD1_START),
-					             !Server.Active());
+					             !Server.GetMode());
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT),
-					             !Server.Active());
+					             !Server.IsConnected());
 					break;
 				case IDD1_CLIENT:
 					EnableWindow(GetDlgItem(hDlg, IDD1_IP), TRUE);
@@ -247,6 +257,10 @@ idd1_server:
 			}
 			return true;
 		case WM_CLOSE:
+			SendMessage(GetDlgItem(hDlg, IDD1_IP),
+			            IPM_GETADDRESS, 0, (LPARAM) &adr);
+			port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
+			addr = Address(adr, port);
 			EndDialog(hDlg, 0);
 			break;
 	}
@@ -335,19 +349,21 @@ bool InitListView(HWND hWnd) {
 LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
                                LPARAM lParam) {
 	TCHAR buf[MAX_LOADSTRING];
-	pListItem item;
+	ListItem item;
 	switch (message) {
 		case WM_CREATE:
-			if (!Client.getList())
+			if (!Client_list(4096, addr)) // FIXME
 				MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
+			RefreshWindow(hWnd);
 			break;
 
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDM_REFRESH:
-					if (!Client.getList())
+					if (!Client_list(4096, addr)) // FIXME
 						MessageBox(hWnd, szErrLdList,
 						           szError, MB_ICONERROR | MB_OK);
+					RefreshWindow(hWnd);
 					break;
 			}
 			break;
@@ -363,36 +379,36 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 					case LVN_GETDISPINFO:
 						itemid = lpdi->item.iItem;
 						if (lpdi->item.mask & LVIF_TEXT) {
-							if (Client.list.empty()) {
+							if (list.empty()) {
 								//lpdi->item.pszText = (LPSTR) szNull;
 								break;
 							}
-							item = Client.list[itemid];
+							item = list[itemid];
 							switch(lpdi->item.iSubItem) {
 								case 0:
-									lpdi->item.pszText = item->name;
+									lpdi->item.pszText = item.name;
 									break;
 								case 1:
-									lpdi->item.pszText = item->viewname;
+									lpdi->item.pszText = item.viewname;
 									break;
 								case 2:
-									if (item->state & 0x40)
+									if (item.state & 0x40)
 										LoadString(hInst, IDS_UNKNOWN,
 										           buf, MAX_LOADSTRING);
 									else
 										LoadString(hInst,
-										           IDS_STATE+(item->state & 7),
+										           IDS_STATE+(item.state & 7),
 										           buf, MAX_LOADSTRING);
 									lpdi->item.pszText = buf;
 									break;
 								case 3:
-									if (item->state & 0x80)
+									if (item.state & 0x80)
 										LoadString(hInst, IDS_UNKNOWN,
 										           buf, MAX_LOADSTRING);
 									else
 										LoadString(hInst,
 										           IDS_RUNTYPE +
-										           ((item->state>>3) & 7), buf,
+										           ((item.state>>3) & 7), buf,
 										           MAX_LOADSTRING);
 									lpdi->item.pszText = buf;
 									break;
@@ -435,7 +451,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 //
 void RefreshWindow(HWND hWnd) {
 	// 1. Устанавливаем количество записей ListView
-	ListView_SetItemCount(hListView, Client.list.size());
+	ListView_SetItemCount(hListView, list.size());
 	// 2. Изменяем размеры ListView
 	RECT rc, sbrc;
 	GetClientRect(hWnd, &rc);
