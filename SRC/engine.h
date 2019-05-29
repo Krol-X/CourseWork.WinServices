@@ -42,9 +42,9 @@ const float DeltaTime = 0.001f;
 const float SendRate = 0.25f;
 const float TimeOut = 0.1f;
 
-#define RESERVED_BYTES 1+4
+#define RESERVED_BYTES 4+4
 typedef struct Datagram {
-	BYTE cmd;
+	DWORD cmd; // BYTE? :(
 	DWORD cou;
 	char data[];
 } Datagram;
@@ -106,7 +106,9 @@ static void *Server_main(void *) {
 				if (dg->cmd == CMD_LIST) {
 					WriteLog("list cmd");
 					scm.Init();
+					Log.Write("call getEnum");
 					dg = (Datagram *) scm.getEnum(size, num);
+					Log.Write("OK");
 					if (!dg) {
 						WriteLog( "failed to making service list" );
 						break;
@@ -186,6 +188,7 @@ vector<ListItem> list;
 // НАЗНАЧЕНИЕ: получить список служб сервера
 //
 bool Client_list(WORD port, Address addr) {
+	list.clear();
 	bool connected = Client.Start(port);
 	unsigned char buf[BUF_SIZE];
 	Datagram *dg = (Datagram *) buf;
@@ -228,6 +231,7 @@ bool Client_list(WORD port, Address addr) {
 		pListItem item;
 		char *str1, *str2;
 		int cou = dg->cou;
+		char *pbuf1 = (char *) buf;
 		char *pbuf = (char *) &buf[RESERVED_BYTES];
 		for (int i=0; i<cou; i++) {
 			str1 = (char *) &pbuf[1];

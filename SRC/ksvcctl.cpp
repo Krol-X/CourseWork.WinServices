@@ -310,7 +310,7 @@ bool InitListView(HWND hWnd) {
 	              ;
 	hListView = CreateWindowEx(WS_EX_CLIENTEDGE,
 	                           WC_LISTVIEW,
-	                           (PCTSTR) NULL,
+	                           (LPCTSTR) NULL,
 	                           dwStyle,
 	                           0, 0, 10, 10,
 	                           hWnd,
@@ -354,7 +354,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 		case WM_CREATE:
 			if (!Client_list(4096, addr)) // FIXME
 				MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
-			RefreshWindow(hWnd);
+			//RefreshWindow(hWnd);
 			break;
 
 		case WM_COMMAND:
@@ -363,7 +363,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 					if (!Client_list(4096, addr)) // FIXME
 						MessageBox(hWnd, szErrLdList,
 						           szError, MB_ICONERROR | MB_OK);
-					RefreshWindow(hWnd);
+					//RefreshWindow(hWnd);
 					break;
 			}
 			break;

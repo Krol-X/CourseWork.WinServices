@@ -292,8 +292,8 @@ class SCMObj : __SVCObj {
 		}
 
 
-		bool Init(PCTSTR MachineName = 0,
-		          PCTSTR DBName = 0,
+		bool Init(LPCTSTR MachineName = 0,
+		          LPCTSTR DBName = 0,
 		          DWORD Access = SC_MANAGER_CONNECT |
 		                         SC_MANAGER_ENUMERATE_SERVICE |
 		                         SC_MANAGER_QUERY_LOCK_STATUS) {
@@ -316,12 +316,14 @@ class SCMObj : __SVCObj {
 				return 0;
 			DWORD cbNeeded;
 			DWORD dwResumeHandle = 0;
-			char buf1, tmp[BUF_SIZE];
+			char buf1[BUF_SIZE], tmp[BUF_SIZE];
 			LPENUM_SERVICE_STATUS stat = (LPENUM_SERVICE_STATUS) buf1;
+            Log.Write("getEnum:");
 			if (!EnumServicesStatus(hSCM, SERVICE_WIN32, SERVICE_STATE_ALL,
 			                        stat, BUF_SIZE, &cbNeeded,
 			                        &num, &dwResumeHandle))
 				return 0;
+            Log.Write("ok");
 			size = 0;
 #define put(x) tmp[size++] = x;
 #define puts(x) strcpy(tmp+size, x); size+=strlen(x)+1;
@@ -337,7 +339,7 @@ class SCMObj : __SVCObj {
 				//WriteLog(stat->lpDisplayName);
 			}
 			char *buf = new char[size+RESERVED_BYTES];
-			memcpy(buf+RESERVED_BYTES, tmp, size);
+			memcpy((void *)((DWORD)buf+RESERVED_BYTES), tmp, size);
 			return buf;
 		}
 
