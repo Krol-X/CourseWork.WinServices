@@ -76,7 +76,6 @@ using namespace std;
 
 //#include "net.h"
 #include "extends.h"
-#include "cplog.h"
 
 //using namespace net;
 

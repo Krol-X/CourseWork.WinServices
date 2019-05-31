@@ -1,7 +1,7 @@
-пїњ//
-// –Ч–Р–У–Ю–Ы–Ю–Т–Ю–Ъ: UDPSOCK.H
 //
-// –Ю–Я–Ш–°–Р–Э–Ш–Х: –Ї–ї–∞—Б—Б UdpSocket
+// «ј√ќЋќ¬ќ : UDPSOCK.H
+//
+// ќѕ»—јЌ»≈: класс UdpSocket
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //

@@ -12,6 +12,79 @@
 #define CMD_LIST     0x0С000000
 #define CMD_SET      0x18000000
 
+////////////////////////////////////////////////////////////////////////////////
+// СЕКЦИЯ: Сервер
+//
+
+
+Server::Server() {
+	
+}
+
+
+Server::~Server() {
+
+}
+
+
+bool Server::Start(unsigned int port) {
+
+}
+
+
+bool Server::IsWorking() {
+
+}
+
+
+void Server::Stop() {
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// СЕКЦИЯ: Клиент
+//
+
+Client::Client() {
+
+}
+
+
+Client::~Client() {
+
+}
+
+
+bool Client::Init(Address addr) {
+
+}
+
+
+void Client::Done() {
+
+}
+
+
+bool Client::GetList() {
+
+}
+
+
+unsigned int Client::ListSize() {
+
+}
+
+
+ListItem* Client::ListItem(unsigned int idx) {
+	
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// СЕКЦИЯ: Вспомогательные функции
+//
+
 //
 // ФУНКЦИЯ: void wait( float seconds )
 //
@@ -51,9 +124,4 @@ void ShutdownSockets() {
 	WSACleanup();
 #endif
 }
-
-
-
-
-
 

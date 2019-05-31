@@ -318,25 +318,18 @@ class SCMObj : __SVCObj {
 			DWORD dwResumeHandle = 0;
 			char buf1[BUF_SIZE], tmp[BUF_SIZE];
 			LPENUM_SERVICE_STATUS stat = (LPENUM_SERVICE_STATUS) buf1;
-            Log.Write("getEnum:");
 			if (!EnumServicesStatus(hSCM, SERVICE_WIN32, SERVICE_STATE_ALL,
 			                        stat, BUF_SIZE, &cbNeeded,
 			                        &num, &dwResumeHandle))
 				return 0;
-            Log.Write("ok");
 			size = 0;
 #define put(x) tmp[size++] = x;
 #define puts(x) strcpy(tmp+size, x); size+=strlen(x)+1;
-			//Log.WriteInt("Total: ", num);
 			for (int i=0; i<num; i++, stat++) {
 				int x = ServiceObj(hSCM, stat->lpServiceName).Status;
-				//Log.WriteInt("Current: ", i);
-				//Log.WriteInt("Offset: ", size);
 				put(x);
 				puts(stat->lpServiceName);
 				puts(stat->lpDisplayName);
-				//WriteLog(stat->lpServiceName);
-				//WriteLog(stat->lpDisplayName);
 			}
 			char *buf = new char[size+RESERVED_BYTES];
 			memcpy((void *)((DWORD)buf+RESERVED_BYTES), tmp, size);

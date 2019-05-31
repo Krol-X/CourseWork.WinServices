@@ -8,10 +8,9 @@
 
 #include "sock.h"
 
-class TcpSocket : Socket {
+class TcpSocket : public Socket {
 	public:
 		TcpSocket();
-		~TcpSocket();
 		bool Open(unsigned short port);
 		bool Accept();
 		bool Connect(Address addr);

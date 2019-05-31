@@ -46,7 +46,7 @@ class Server {
 	public:
 		Server();
 		~Server();
-		bool Start();
+		bool Start(unsigned int port = 0);
 		bool IsWorking();
 		void Stop();
 };
@@ -63,14 +63,17 @@ class Client {
 	public:
 		Client();
 		~Client();
-		bool Init(char *addr);
-		ListItem *GetList();
+		bool Init(Address addr);
+		void Done();
+		bool GetList();
+		unsigned int ListSize();
+		ListItem* ListItem(unsigned int idx);
 		//ListItem *SetSvc();
 };
 
 
 // Приостановить программу на некоторое время
-void wait( float seconds );
+void Wait( float seconds );
 
 // Инициализировать работу с сокетами
 bool InitializeSockets();

@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=1
 CompilerSet=4
 CompilerSettings=00000001g0000000001000000
-UnitCount=8
+UnitCount=10
 
 [VersionInfo]
 Major=1
@@ -69,8 +69,18 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit3]
-FileName=CPLOG.cpp
+[Unit4]
+FileName=resource.h
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit6]
+FileName=sock.h
 CompileCpp=1
 Folder=engine
 Compile=1
@@ -79,7 +89,17 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit4]
+[Unit7]
+FileName=tcpsock.cpp
+CompileCpp=1
+Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit3]
 FileName=engine.h
 CompileCpp=1
 Folder=engine
@@ -90,26 +110,6 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit5]
-FileName=CPLOG.h
-CompileCpp=1
-Folder=engine
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit6]
-FileName=resource.h
-CompileCpp=1
-Folder=
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit7]
 FileName=services.h
 CompileCpp=1
 Folder=engine
@@ -120,7 +120,27 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit8]
-FileName=..\DEV\_INFO\netPROG\SendingAndReceivingPackets\net.h
+FileName=tcpsock.h
+CompileCpp=1
+Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit9]
+FileName=sock.cpp
+CompileCpp=1
+Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit10]
+FileName=engine.cpp
 CompileCpp=1
 Folder=engine
 Compile=1

@@ -49,6 +49,8 @@ TCHAR szStop[MAX_LOADSTRING];
 TCHAR szErrStart[MAX_LOADSTRING];
 //TCHAR szErrConnect[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];
+Server server;
+Client client;
 
 
 //
@@ -135,7 +137,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			}
 		}
 	} while (r);
-	StopServer();
+	server.Stop();
 	ShutdownSockets();
 	SaveSettings();
 	return EXIT_SUCCESS;
@@ -220,7 +222,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
 					                BM_GETCHECK, 0L, 0L)) {
-						if (StartServer(addr.port)) {
+						if (server.Start(addr.port)) {
 							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), FALSE);
@@ -232,7 +234,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					}
 					break;
 				case IDD1_STOP:
-					StopServer();
+					Server();
 					EnableWindow(GetDlgItem(hDlg, IDD1_START), TRUE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), TRUE);
@@ -244,9 +246,9 @@ idd1_server:
 					SetWindowText(GetDlgItem(hDlg, IDD1_START), szStart);
 					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szStop);
 					EnableWindow(GetDlgItem(hDlg, IDD1_START),
-					             !Server.GetMode());
+					             !server.IsWorking());
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT),
-					             !Server.IsConnected());
+					             !server.IsWorking());
 					break;
 				case IDD1_CLIENT:
 					EnableWindow(GetDlgItem(hDlg, IDD1_IP), TRUE);
@@ -349,10 +351,11 @@ bool InitListView(HWND hWnd) {
 LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
                                LPARAM lParam) {
 	TCHAR buf[MAX_LOADSTRING];
-	ListItem item;
+	ListItem *item;
 	switch (message) {
 		case WM_CREATE:
-			if (!Client_list(4096, addr)) // FIXME
+			client.Init(addr);
+			if (!client.GetList())
 				MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
 			//RefreshWindow(hWnd);
 			break;
@@ -360,10 +363,10 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDM_REFRESH:
-					if (!Client_list(4096, addr)) // FIXME
+					if (!client.GetList())
 						MessageBox(hWnd, szErrLdList,
 						           szError, MB_ICONERROR | MB_OK);
-					//RefreshWindow(hWnd);
+					RefreshWindow(hWnd);
 					break;
 			}
 			break;
@@ -379,36 +382,36 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 					case LVN_GETDISPINFO:
 						itemid = lpdi->item.iItem;
 						if (lpdi->item.mask & LVIF_TEXT) {
-							if (list.empty()) {
+							if ( client.ListSize() == 0 ) {
 								//lpdi->item.pszText = (LPSTR) szNull;
 								break;
 							}
-							item = list[itemid];
+							item = client.ListItem( itemid );
 							switch(lpdi->item.iSubItem) {
 								case 0:
-									lpdi->item.pszText = item.name;
+									lpdi->item.pszText = item->name;
 									break;
 								case 1:
-									lpdi->item.pszText = item.viewname;
+									lpdi->item.pszText = item->viewname;
 									break;
 								case 2:
-									if (item.state & 0x40)
+									if (item->state & 0x40)
 										LoadString(hInst, IDS_UNKNOWN,
 										           buf, MAX_LOADSTRING);
 									else
 										LoadString(hInst,
-										           IDS_STATE+(item.state & 7),
+										           IDS_STATE+(item->state & 7),
 										           buf, MAX_LOADSTRING);
 									lpdi->item.pszText = buf;
 									break;
 								case 3:
-									if (item.state & 0x80)
+									if (item->state & 0x80)
 										LoadString(hInst, IDS_UNKNOWN,
 										           buf, MAX_LOADSTRING);
 									else
 										LoadString(hInst,
 										           IDS_RUNTYPE +
-										           ((item.state>>3) & 7), buf,
+										           ((item->state>>3) & 7), buf,
 										           MAX_LOADSTRING);
 									lpdi->item.pszText = buf;
 									break;
@@ -450,9 +453,8 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 // НАЗНАЧЕНИЕ: обновляет элементы окна клиента
 //
 void RefreshWindow(HWND hWnd) {
-	pthread_mutex_lock(&mutex);
 	// 1. Устанавливаем количество записей ListView
-	ListView_SetItemCount(hListView, list.size());
+	ListView_SetItemCount( hListView, client.ListSize() );
 	// 2. Изменяем размеры ListView
 	RECT rc, sbrc;
 	GetClientRect(hWnd, &rc);
@@ -465,6 +467,5 @@ void RefreshWindow(HWND hWnd) {
 	           true);
 	for (int i=0; i<IDS_COL_num; i++)
 		ListView_SetColumnWidth(hListView, i, LVSCW_AUTOSIZE_USEHEADER);
-	pthread_mutex_unlock(&mutex);
 }
 

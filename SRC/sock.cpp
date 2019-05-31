@@ -1,20 +1,20 @@
 //
-// Р—РђР“РћР›РћР’РћРљ: SOCK.CPP
+// ЗАГОЛОВОК: SOCK.CPP
 //
-// РћРџРРЎРђРќРР•: Р°Р±СЃС‚СЂР°РєС‚РЅС‹Р№ РєР»Р°СЃСЃ Socket
+// ОПИСАНИЕ: абстрактный класс Socket
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
-// TODO: РѕРїРёСЃР°РЅРёСЏ
+// TODO: описания
 //
 #include "sock.h"
+#include <assert.h>
 #include <windows.h>
-#define closesocket(socket) close(socket)
 
 
 
 Socket::Socket() {
-	socket = consock = 0;
+	sock = consock = 0;
 }
 
 
@@ -35,21 +35,21 @@ bool Socket::OpenRand() {
 
 
 void Socket::Close() {
-	if ( socket != 0 ) {
-		closesocket( socket );
-		socket = 0;
+	if ( sock != 0 ) {
+		closesocket( sock );
+		sock = 0;
 	}
 }
 
 
 
 bool Socket::IsOpen() {
-	return ( socket != 0 );
+	return ( sock != 0 );
 }
 
 
 
-bool Socket::Send(Address dest, void *data, DWORD sz) {
+bool Socket::Send(Address dest, void *data, int size) {
 	assert( data );
 	assert( size > 0 );
 	if ( !IsOpen() )
@@ -57,27 +57,26 @@ bool Socket::Send(Address dest, void *data, DWORD sz) {
 	assert( dest.addr != 0 );
 	assert( dest.port != 0 );
 	sockaddr_in to;
-	socklen_t toLength = sizeof( to );
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = htonl( dest.addr );
-	address.sin_port = htons( (unsigned short)dest.port );
+	to.sin_family = AF_INET;
+	to.sin_addr.s_addr = htonl( dest.addr );
+	to.sin_port = htons( (unsigned short)dest.port );
 
-	int sent_bytes = sendto( socket, (char *)data, size, 0,
-	                         (sockaddr *)&address, toLength );
+	int sent_bytes = sendto( sock, (char *)data, size, 0,
+	                         (sockaddr *)&to, sizeof(to) );
 
 	return sent_bytes == size;
 }
 
 
 
-DWORD Socket::Receive(Address src, void *data, DWORD sz) {
+int Socket::Receive(Address src, void *data, int size) {
 	assert( data );
 	assert( size > 0 );
 	if ( !IsOpen() )
 		return 0;
 	sockaddr_in from;
-	socklen_t fromLength = sizeof( from );
-	int received_bytes = recvfrom( socket, (char *)data, size, 0,
+	int fromLength = sizeof(from);
+	int received_bytes = recvfrom( sock, (char *)data, size, 0,
 	                               (sockaddr *)&from, &fromLength );
 	if ( received_bytes <= 0 )
 		return 0;
@@ -85,3 +84,4 @@ DWORD Socket::Receive(Address src, void *data, DWORD sz) {
 	src.port = ntohl( from.sin_port );
 	return received_bytes;
 }
+
