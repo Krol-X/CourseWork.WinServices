@@ -79,8 +79,8 @@ void SaveSettings() {
 	FILE *f = fopen(szConfigFile, "wb");
 	if (f) {
 		struct {
-			DWORD a = addr.GetAddress();
-			WORD p = addr.GetPort();
+			DWORD a = addr.addr;
+			WORD p = addr.port;
 		} adr;
 		fwrite(&addr, sizeof(addr), 1, f);
 		fclose(f);
@@ -201,8 +201,8 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 			DWORD adr;
 			WORD port;
 			SendMessage(GetDlgItem(hDlg, IDD1_IP),
-			            IPM_SETADDRESS, 0, (LPARAM) addr.GetAddress());
-			SetDlgItemInt(hDlg, IDD1_PORT, addr.GetPort(), false);
+			            IPM_SETADDRESS, 0, (LPARAM) addr.addr);
+			SetDlgItemInt(hDlg, IDD1_PORT, addr.port, false);
 			SendMessage(GetDlgItem(hDlg, IDD1_SERVER), BM_SETCHECK, TRUE, 0);
 			SendMessage(GetDlgItem(hDlg, IDD1_CLIENT), BM_SETCHECK, FALSE, 0);
 			EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
@@ -220,7 +220,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
 					                BM_GETCHECK, 0L, 0L)) {
-						if (StartServer(addr.GetPort())) {
+						if (StartServer(addr.port)) {
 							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), FALSE);
@@ -450,6 +450,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 // НАЗНАЧЕНИЕ: обновляет элементы окна клиента
 //
 void RefreshWindow(HWND hWnd) {
+	pthread_mutex_lock(&mutex);
 	// 1. Устанавливаем количество записей ListView
 	ListView_SetItemCount(hListView, list.size());
 	// 2. Изменяем размеры ListView
@@ -464,5 +465,6 @@ void RefreshWindow(HWND hWnd) {
 	           true);
 	for (int i=0; i<IDS_COL_num; i++)
 		ListView_SetColumnWidth(hListView, i, LVSCW_AUTOSIZE_USEHEADER);
+	pthread_mutex_unlock(&mutex);
 }
 
