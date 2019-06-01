@@ -73,6 +73,7 @@ class Socket {
 	protected:
 		int sock;
 		int consock; // сокет соединения
+		Address addr;
 	public:
 		Socket();
 		~Socket();
@@ -86,5 +87,7 @@ class Socket {
 		virtual void Disconnect() = 0;
 		bool Send(Address dest, void *data, int size);
 		int Receive(Address src, void *data, int size);
+		bool Send(void *data, int size);
+		int Receive(void *data, int size);
 };
 

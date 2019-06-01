@@ -33,9 +33,7 @@ Socket::~Socket() {
 // НАЗНАЧЕНИЕ: открыть сокет на одном из свободных портов
 //
 bool Socket::OpenRand() {
-	int x;
-	// TODO: realize
-	return Open(x);
+	return Open(0);
 }
 
 
@@ -109,3 +107,32 @@ int Socket::Receive(Address src, void *data, int size) {
 	return received_bytes;
 }
 
+
+//
+// МЕТОД: Socket::Send(void *data, int size)
+//
+// НАЗАНЧЕНИЕ: Отправить данные через установленное соединение
+//
+// ВОЗВРАЩАЕТ: флаг успеха операции
+//
+bool Socket::Send(void *data, int size) {
+	if ( IsConnected() )
+		return Send( addr, data, size );
+	else
+		return false;
+}
+
+
+//
+// МЕТОД: int Socket::Receive(void *data, int size)
+//
+// НАЗАНЧЕНИЕ: Получить данные через установленное соединение
+//
+// ВОЗВРАЩАЕТ: количество принятых байт
+//
+int Socket::Receive(void *data, int size) {
+	if ( IsConnected() )
+		return Receive( addr, data, size );
+	else
+		return false;
+}

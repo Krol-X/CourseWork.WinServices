@@ -14,10 +14,10 @@
 // СЕКЦИЯ: Настройки, константы и структура датаграммы
 //
 
-#define ProtocolId *((DWORD *)"\17VS\3")
+#define PROTOCOLID *((DWORD *)"\17VS\3")
 #define CMD_ANY      0
 #define CMD_CHECKOUT 0x80000000
-#define CMD_LIST     0x0С000000
+#define CMD_LIST     0x0C000000
 #define CMD_SET      0x18000000
 
 //
@@ -26,10 +26,11 @@
 // СОДЕРЖИМОЕ: передоваемая комманда и данные
 //
 struct Datagram {
+	DWORD id;
 	DWORD cmd_cou;
 	char data[];
 };
-#define RESERVED_BYTES 4
+#define RESERVED_BYTES 4+4
 #define BUF_SIZE RESERVED_BYTES+65536
 
 
@@ -59,13 +60,35 @@ static void *Server_main(void *_param) {
 	bool x;
 	ServerParams *param = (ServerParams *)_param;
 	Socket *sock = &param->sock;
+	unsigned char inbuf[BUF_SIZE], outbuf[BUF_SIZE];
+	Datagram *indg = (Datagram *) inbuf;
+	Datagram *outdg = (Datagram *) outbuf;
+	SCMObj scm;
+	void *data;
 	do {
 		if ( sock->Accept() ) {
-			// ...
+			outdg->id = PROTOCOLID;
+			if ( sock->Receive( inbuf, BUF_SIZE )
+			        && indg->id == PROTOCOLID )
+				switch ( indg->cmd_cou ) {
+					case CMD_LIST:
+						if ( scm.Init() ) {
+							DWORD size, num;
+							data = scm.getEnum(size, num);
+							memcpy( &outdg->data, data, size );
+							outdg->cmd_cou = CMD_LIST + num;
+							sock->Send(outdg, size + RESERVED_BYTES);
+						}
+						break;
+					case CMD_SET:
+						// ...
+						break;
+				}
 			sock->Disconnect();
 		}
 		GetParam1( x, active );
 	} while ( x );
+	return 0;
 }
 
 
@@ -135,16 +158,44 @@ void Server::Stop() {
 //
 bool Client::GetList(Address addr) {
 	bool r;
-	assert( !param.sock.IsOpen() );
-	r = param.sock.OpenRand();
+	Socket *sock = &param.sock;
+	unsigned char inbuf[BUF_SIZE], outbuf[BUF_SIZE];
+	Datagram *indg = (Datagram *) inbuf;
+	Datagram *outdg = (Datagram *) outbuf;
+	outdg->id = PROTOCOLID;
+	assert( !sock->IsOpen() );
+	r = sock->OpenRand();
 	if (r) {
-		r = param.sock.Connect( addr );
+		r = sock->Connect( addr );
 		if (r) {
-
-			param.sock.Disconnect();
+			outdg->cmd_cou = CMD_LIST;
+			sock->Send(outdg, RESERVED_BYTES);
+			sock->Receive(indg, BUF_SIZE);
+			if ( indg->id == PROTOCOLID ) {
+				pthread_mutex_lock(&param.mutex);
+				param.list.clear();
+				char *pbuf = (char *) &indg->data;
+				ListItem *item;
+				for (int i=0; i<indg->cmd_cou & 0xFFFFFF; i++) {
+					char *str1 = (char *) &pbuf[1];
+					char *str2 = (char *) str1+strlen(str1)+1;
+					int len1 = strlen(str1);
+					int len2 = strlen(str2);
+					item = (ListItem *) new char[1+2*sizeof(char *)+len1+len2+2];
+					item->state = pbuf[0];
+					item->name = (char *) &item->data;
+					item->viewname = (char *) &item->data[len1+1];
+					strcpy(item->name, str1);
+					strcpy(item->viewname, str2);
+					param.list.insert(param.list.end(), *item);
+					pbuf = (char *) str2+strlen(str2)+1;
+				}
+				pthread_mutex_unlock(&param.mutex);
+			}
+			sock->Disconnect();
 		}
-		if ( param.sock.IsOpen() )
-			param.sock.Close();
+		if ( sock->IsOpen() )
+			sock->Close();
 	}
 	return r;
 }
@@ -163,11 +214,11 @@ unsigned int Client::ListSize() {
 
 
 //
-// МЕТОД: ListItem* Client::ListItem(unsigned int idx)
+// МЕТОД: ListItem* Client::GetItem(unsigned int idx)
 //
 // ВОЗВРАЩАЕТ: указатель на элемент списка
 //
-ListItem* Client::ListItem(unsigned int idx) {
+ListItem* Client::GetItem(unsigned int idx) {
 	struct ListItem* r;
 	pthread_mutex_lock(&param.mutex);
 	r = &param.list[idx];

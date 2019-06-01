@@ -72,7 +72,7 @@ class Client {
 	public:
 		bool GetList(Address addr);
 		unsigned int ListSize();
-		ListItem* ListItem(unsigned int idx);
+		ListItem* GetItem(unsigned int idx);
 		//ListItem *SetSvc();
 };
 

@@ -233,7 +233,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					}
 					break;
 				case IDD1_STOP:
-					Server();
+					server.Stop();
 					EnableWindow(GetDlgItem(hDlg, IDD1_START), TRUE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), TRUE);
@@ -381,10 +381,9 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 						itemid = lpdi->item.iItem;
 						if (lpdi->item.mask & LVIF_TEXT) {
 							if ( client.ListSize() == 0 ) {
-								//lpdi->item.pszText = (LPSTR) szNull;
 								break;
 							}
-							item = client.ListItem( itemid );
+							item = client.GetItem( itemid );
 							switch(lpdi->item.iSubItem) {
 								case 0:
 									lpdi->item.pszText = item->name;

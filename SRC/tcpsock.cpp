@@ -58,7 +58,7 @@ bool TcpSocket::Open(unsigned short port) {
 bool TcpSocket::Accept() {
 	listen( sock, MAX_CLIENTS );
 	consock = accept( sock, 0, 0 );
-	if( sock < 0 ) {
+	if( consock < 0 ) {
 		consock = 0;
 		return false;
 	}
@@ -79,9 +79,10 @@ bool TcpSocket::Connect(Address address) {
 	adr.sin_port = htons( address.port );
 	adr.sin_addr.s_addr = htonl( address.addr );
 	if( connect( sock, (struct sockaddr *)&adr, sizeof(adr) ) < 0 ) {
-		// ?
+		consock = 0;
 		return false;
 	}
+	addr = address;
 	consock = -1; // заглушка для IsConnected()
 	return true;
 }
