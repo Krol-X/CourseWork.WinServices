@@ -5,18 +5,18 @@
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
-// TODO: описания, код
-//
 #include "tcpsock.h"
 #include <assert.h>
 #include <windows.h>
 
 
-TcpSocket::TcpSocket() {
-}
-
-
-
+//
+// МЕТОД: bool TcpSocket::Open(unsigned short port)
+//
+// НАЗАНЧЕНИЕ: открыть сокет
+//
+// ВОЗВРАЩАЕТ: флаг успеха операции
+//
 bool TcpSocket::Open(unsigned short port) {
 	assert( !IsOpen() );
 	// create socket
@@ -48,7 +48,13 @@ bool TcpSocket::Open(unsigned short port) {
 }
 
 
-
+//
+// МЕТОД: bool TcpSocket::Accept()
+//
+// НАЗАНЧЕНИЕ: ожидать нового клиента, соединится с ним
+//
+// ВОЗВРАЩАЕТ: флаг успеха операции
+//
 bool TcpSocket::Accept() {
 	listen( sock, MAX_CLIENTS );
 	consock = accept( sock, 0, 0 );
@@ -60,7 +66,13 @@ bool TcpSocket::Accept() {
 }
 
 
-
+//
+// МЕТОД: bool TcpSocket::Connect(Address address)
+//
+// НАЗАНЧЕНИЕ: соединится с сервером
+//
+// ВОЗВРАЩАЕТ: флаг успеха операции
+//
 bool TcpSocket::Connect(Address address) {
 	struct sockaddr_in adr;
 	adr.sin_family = AF_INET;
@@ -75,13 +87,21 @@ bool TcpSocket::Connect(Address address) {
 }
 
 
-
+//
+// МЕТОД: bool TcpSocket::IsConnected()
+//
+// ВОЗВРАЩАЕТ: состояние соединения
+//
 bool TcpSocket::IsConnected() {
 	return ( consock != 0 );
 }
 
 
-
+//
+// МЕТОД: void TcpSocket::Disconnect()
+//
+// НАЗАНЧЕНИЕ: разорвать связь, закрыть сокет (если сервер, то сокет соединения)
+//
 void TcpSocket::Disconnect() {
 	if ( IsConnected() ) {
 		if ( consock == -1 )

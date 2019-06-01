@@ -5,27 +5,33 @@
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
-// TODO: описания
-//
 #include "sock.h"
 #include <assert.h>
 #include <windows.h>
 
 
-
+//
+// КОНСТРУКТОР: Socket::Socket()
+//
 Socket::Socket() {
 	sock = consock = 0;
 }
 
 
-
+//
+// ДЕСТРУКТОР: Socket::~Socket()
+//
 Socket::~Socket() {
 	if ( IsOpen() )
 		Close();
 }
 
 
-
+//
+// МЕТОД: bool Socket::OpenRand()
+//
+// НАЗНАЧЕНИЕ: открыть сокет на одном из свободных портов
+//
 bool Socket::OpenRand() {
 	int x;
 	// TODO: realize
@@ -33,7 +39,11 @@ bool Socket::OpenRand() {
 }
 
 
-
+//
+// МЕТОД: void Socket::Close()
+//
+// НАЗНАЧЕНИЕ: закрыть сокет
+//
 void Socket::Close() {
 	if ( sock != 0 ) {
 		closesocket( sock );
@@ -42,13 +52,23 @@ void Socket::Close() {
 }
 
 
-
+//
+// МЕТОД: bool Socket::IsOpen()
+//
+// ВЕРНУТЬ: состояние сокета
+//
 bool Socket::IsOpen() {
 	return ( sock != 0 );
 }
 
 
-
+//
+// МЕТОД: bool Socket::Send(Address dest, void *data, int size)
+//
+// НАЗАНЧЕНИЕ: Отправить данные
+//
+// ВОЗВРАЩАЕТ: флаг успеха операции
+//
 bool Socket::Send(Address dest, void *data, int size) {
 	assert( data );
 	assert( size > 0 );
@@ -60,15 +80,19 @@ bool Socket::Send(Address dest, void *data, int size) {
 	to.sin_family = AF_INET;
 	to.sin_addr.s_addr = htonl( dest.addr );
 	to.sin_port = htons( (unsigned short)dest.port );
-
 	int sent_bytes = sendto( sock, (char *)data, size, 0,
 	                         (sockaddr *)&to, sizeof(to) );
-
 	return sent_bytes == size;
 }
 
 
-
+//
+// МЕТОД: int Socket::Receive(Address src, void *data, int size)
+//
+// НАЗАНЧЕНИЕ: Получить данные
+//
+// ВОЗВРАЩАЕТ: количество принятых байт
+//
 int Socket::Receive(Address src, void *data, int size) {
 	assert( data );
 	assert( size > 0 );

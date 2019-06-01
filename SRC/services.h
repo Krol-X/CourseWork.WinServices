@@ -5,7 +5,10 @@
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
+// TODO: описания
+//
 #include "include.h"
+
 
 #define SVC_TIMEOUT     10000
 /*
@@ -316,10 +319,10 @@ class SCMObj : __SVCObj {
 				return 0;
 			DWORD cbNeeded;
 			DWORD dwResumeHandle = 0;
-			char buf1[BUF_SIZE], tmp[BUF_SIZE];
+			char buf1[65536], tmp[65536];
 			LPENUM_SERVICE_STATUS stat = (LPENUM_SERVICE_STATUS) buf1;
 			if (!EnumServicesStatus(hSCM, SERVICE_WIN32, SERVICE_STATE_ALL,
-			                        stat, BUF_SIZE, &cbNeeded,
+			                        stat, 65536, &cbNeeded,
 			                        &num, &dwResumeHandle))
 				return 0;
 			size = 0;
@@ -331,8 +334,8 @@ class SCMObj : __SVCObj {
 				puts(stat->lpServiceName);
 				puts(stat->lpDisplayName);
 			}
-			char *buf = new char[size+RESERVED_BYTES];
-			memcpy((void *)((DWORD)buf+RESERVED_BYTES), tmp, size);
+			char *buf = new char[size];
+			memcpy(buf, tmp, size);
 			return buf;
 		}
 

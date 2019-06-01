@@ -12,8 +12,6 @@
 //
 #include "include.h"
 #include "resource.h"
-
-TCHAR szError[MAX_LOADSTRING];
 #include "engine.h"
 
 
@@ -46,6 +44,7 @@ TCHAR szWndClass[MAX_LOADSTRING];
 TCHAR szStart[MAX_LOADSTRING];
 TCHAR szConnect[MAX_LOADSTRING];
 TCHAR szStop[MAX_LOADSTRING];
+TCHAR szError[MAX_LOADSTRING];
 TCHAR szErrStart[MAX_LOADSTRING];
 //TCHAR szErrConnect[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];
@@ -354,8 +353,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 	ListItem *item;
 	switch (message) {
 		case WM_CREATE:
-			client.Init(addr);
-			if (!client.GetList())
+			if (!client.GetList(addr))
 				MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
 			//RefreshWindow(hWnd);
 			break;
@@ -363,7 +361,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDM_REFRESH:
-					if (!client.GetList())
+					if (!client.GetList(addr))
 						MessageBox(hWnd, szErrLdList,
 						           szError, MB_ICONERROR | MB_OK);
 					RefreshWindow(hWnd);

@@ -6,6 +6,7 @@
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 #include "tcpsock.h"
+#define SocketType TcpSocket
 
 
 //
@@ -21,16 +22,15 @@ struct ListItem {
 
 
 //
-// СТРУКТУРА: Datagram
+// СТРУКТУРА: ServerParams
 //
-// СОДЕРЖИМОЕ: передоваемая комманда и данные
+// СОДЕРЖИМОЕ: общие параметры для потоков сервера
 //
-struct Datagram {
-	DWORD cmd_cou;
-	char data[];
+struct ServerParams {
+	SocketType sock;
+	bool active;
+	pthread_mutex_t mutex;
 };
-#define RESERVED_BYTES 4
-#define BUF_SIZE RESERVED_BYTES+65536
 
 
 //
@@ -40,15 +40,24 @@ struct Datagram {
 //
 class Server {
 	private:
-		Address a;
 		pthread_t thread;
-		bool active;
+		ServerParams param;
 	public:
-		Server();
-		~Server();
 		bool Start(unsigned int port = 0);
 		bool IsWorking();
 		void Stop();
+};
+
+
+//
+// СТРУКТУРА: ClientParams
+//
+// СОДЕРЖИМОЕ: общие параметры для потоков клиента
+//
+struct ClientParams {
+	SocketType sock;
+	vector<ListItem> list;
+	pthread_mutex_t mutex;
 };
 
 
@@ -59,13 +68,9 @@ class Server {
 //
 class Client {
 	private:
-		Address a;
+		ClientParams param;
 	public:
-		Client();
-		~Client();
-		bool Init(Address addr);
-		void Done();
-		bool GetList();
+		bool GetList(Address addr);
 		unsigned int ListSize();
 		ListItem* ListItem(unsigned int idx);
 		//ListItem *SetSvc();

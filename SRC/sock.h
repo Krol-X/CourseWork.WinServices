@@ -8,7 +8,6 @@
 #define MAX_CLIENTS 5
 
 
-
 #define PLATFORM_WINDOWS  1
 #define PLATFORM_MAC      2
 #define PLATFORM_UNIX     3
@@ -65,6 +64,11 @@ struct Address {
 
 
 
+//
+// КЛАСС: Socket
+//
+// НАЗНАЧЕНИЕ: реализация сокета
+//
 class Socket {
 	protected:
 		int sock;
