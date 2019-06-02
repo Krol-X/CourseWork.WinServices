@@ -73,6 +73,7 @@ class Socket {
 	public:
 		Socket();
 		~Socket();
+		void Wait();
 		bool SetNonBlocking();
 		virtual bool Open() = 0;
 		virtual bool Bind(Address addr) = 0;

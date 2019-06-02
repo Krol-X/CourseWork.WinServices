@@ -8,6 +8,7 @@
 #include "include.h"
 #include "engine.h"
 #include "services.h"
+#include <stdio.h>
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +70,7 @@ static void *Server_main(void *_param) {
 		if ( sock->Accept() ) {
 			outdg->id = PROTOCOLID;
 			if ( sock->Receive( inbuf, BUF_SIZE )
-			        && indg->id == PROTOCOLID )
+			        && indg->id == PROTOCOLID ) {
 				switch ( indg->cmd_cou ) {
 					case CMD_LIST:
 						if ( scm.Init() ) {
@@ -84,6 +85,7 @@ static void *Server_main(void *_param) {
 						// ...
 						break;
 				}
+			}
 			sock->Disconnect();
 		}
 		GetParam1( x, active );
@@ -153,6 +155,11 @@ void Server::Stop() {
 // ÑÅÊÖÈß: Êëèåíò
 //
 
+
+Client::Client() {
+	param.list.clear();
+}
+
 //
 // ÌÅÒÎÄ: bool Client::GetList()
 //
@@ -161,6 +168,7 @@ void Server::Stop() {
 // ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
 //
 bool Client::GetList(Address addr) {
+	pthread_mutex_lock(&param.mutex);
 	bool r;
 	Socket *sock = &param.sock;
 	unsigned char inbuf[BUF_SIZE], outbuf[BUF_SIZE];
@@ -174,14 +182,15 @@ bool Client::GetList(Address addr) {
 		if ( r && sock->SetNonBlocking() ) {
 			outdg->cmd_cou = CMD_LIST;
 			r = false;
-			if ( sock->Send( outdg, RESERVED_BYTES ) )
+			sock->Wait();
+			if ( sock->Send( outdg, RESERVED_BYTES ) ) {
+				sock->Wait();
 				if (sock->Receive( indg, BUF_SIZE ) > RESERVED_BYTES
 				        && indg->id == PROTOCOLID ) {
-					pthread_mutex_lock(&param.mutex);
 					param.list.clear();
 					char *pbuf = (char *) &indg->data;
 					ListItem *item;
-					for (int i=0; i<indg->cmd_cou & 0xFFFFFF; i++) {
+					for (DWORD i=0; i < (indg->cmd_cou & 0xFFFFFF); i++) {
 						char *str1 = (char *) &pbuf[1];
 						char *str2 = (char *) str1+strlen(str1)+1;
 						int len1 = strlen(str1);
@@ -196,14 +205,15 @@ bool Client::GetList(Address addr) {
 						param.list.insert(param.list.end(), *item);
 						pbuf = (char *) str2+strlen(str2)+1;
 					}
-					pthread_mutex_unlock(&param.mutex);
 					r = true;
 				}
+			}
 			sock->Disconnect();
 		}
 		if ( sock->IsOpen() )
 			sock->Close();
 	}
+	pthread_mutex_unlock(&param.mutex);
 	return r;
 }
 
@@ -266,4 +276,3 @@ void ShutdownSockets() {
 	WSACleanup();
 #endif
 }
-

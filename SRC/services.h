@@ -121,35 +121,32 @@ class ServiceObj : __SVCObj {
 	private:
 		char *name;
 	public:
-
-		extends(Status, ServiceObj)
-	public:
-		operator int() {
+		int GetStatus() {
 			int r = 0;
 			SC_HANDLE hService;
-			hService = OpenService(self->hSCM, self->name,
+			hService = OpenService(this->hSCM, this->name,
 			                       SERVICE_QUERY_STATUS|SERVICE_QUERY_CONFIG);
-			self->err = (hService == NULL);
-			if (self->err)
+			this->err = (hService == NULL);
+			if (this->err)
 				return -1;
 			// 1. Get status
 			LPSERVICE_STATUS stat = new SERVICE_STATUS;
 			if (!QueryServiceStatus(hService, stat)) {
-				self->err = true;
+				this->err = true;
 				r|=0x40;
 			}
 			// 2. Get service run config
 			DWORD cbNeeded;
 			if (!QueryServiceConfig(hService, NULL, 0, &cbNeeded)) {
 				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-					self->err = true;
+					this->err = true;
 					r|=0x80;
 				}
 			}
 			LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG)
 			                              new char[cbNeeded];
 			if (!QueryServiceConfig(hService, conf, cbNeeded, &cbNeeded)) {
-				self->err = true;
+				this->err = true;
 				r|=0x80;
 			}
 			// tsTTTSSS; T - start type, S - state,
@@ -162,7 +159,7 @@ class ServiceObj : __SVCObj {
 		}
 
 
-		int operator =(int flags) {
+		int SetStatus(int flags) {
 			SC_HANDLE hService;
 			bool r;
 			_VERIFY(flags);
@@ -170,20 +167,20 @@ class ServiceObj : __SVCObj {
 				case 0:
 					break;
 				case SERVICE_CONTROL_START:
-					hService = OpenService(self->hSCM, self->name,
+					hService = OpenService(this->hSCM, this->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL);
-					if (self->err)
+					this->err = (hService == NULL);
+					if (this->err)
 						return -1;
 					if (!StartService(hService, 0, NULL)) {
-						self->err = true;
+						this->err = true;
 						_VERIFY(CloseServiceHandle(hService));
 						return -1;
 					}
 					SERVICE_STATUS SvcStatus;
 					for (;;) {
 						if (!QueryServiceStatus(hService, &SvcStatus)) {
-							self->err = true;
+							this->err = true;
 							_VERIFY(CloseServiceHandle(hService));
 							return -1;
 						}
@@ -196,52 +193,52 @@ class ServiceObj : __SVCObj {
 					}
 					_VERIFY(CloseServiceHandle(hService));
 					if (SvcStatus.dwCurrentState != SERVICE_RUNNING) {
-						self->err = true;
+						this->err = true;
 						return -1;
 					}
 					break;
 				case SERVICE_CONTROL_STOP:
-					hService = OpenService(self->hSCM, self->name,
+					hService = OpenService(this->hSCM, this->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL);
-					if (self->err)
+					this->err = (hService == NULL);
+					if (this->err)
 						return -1;
 					r = ControlServiceAndWait(hService,
 					                          SERVICE_CONTROL_STOP,
 					                          SERVICE_STOPPED, SVC_TIMEOUT);
 					_VERIFY(CloseServiceHandle(hService));
 					if (r==0) {
-						self->err = true;
+						this->err = true;
 						return -1;
 					}
 					break;
 				case SERVICE_CONTROL_PAUSE:
-					hService = OpenService(self->hSCM, self->name,
+					hService = OpenService(this->hSCM, this->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL);
-					if (self->err)
+					this->err = (hService == NULL);
+					if (this->err)
 						return -1;
 					r = ControlServiceAndWait(hService,
 					                          SERVICE_CONTROL_PAUSE,
 					                          SERVICE_PAUSED, SVC_TIMEOUT);
 					_VERIFY(CloseServiceHandle(hService));
 					if (r==0) {
-						self->err = true;
+						this->err = true;
 						return -1;
 					}
 					break;
 				case SERVICE_CONTROL_CONTINUE:
-					hService = OpenService(self->hSCM, self->name,
+					hService = OpenService(this->hSCM, this->name,
 					                       SERVICE_START|SERVICE_QUERY_STATUS);
-					self->err = (hService == NULL);
-					if (self->err)
+					this->err = (hService == NULL);
+					if (this->err)
 						return -1;
 					r = ControlServiceAndWait(hService,
 					                          SERVICE_CONTROL_CONTINUE,
 					                          SERVICE_RUNNING, SVC_TIMEOUT);
 					_VERIFY(CloseServiceHandle(hService));
 					if (r==0) {
-						self->err = true;
+						this->err = true;
 						return -1;
 					}
 					break;
@@ -254,14 +251,14 @@ class ServiceObj : __SVCObj {
 				DWORD cbNeeded;
 				if (!QueryServiceConfig(hService, NULL, 0, &cbNeeded)) {
 					if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-						self->err = true;
+						this->err = true;
 						return -1;
 					}
 				}
 				LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG)
 				                              new char[cbNeeded];
 				if (!QueryServiceConfig(hService, conf, cbNeeded, &cbNeeded)) {
-					self->err = true;
+					this->err = true;
 					return -1;
 				}
 				ChangeServiceConfig(
@@ -270,14 +267,11 @@ class ServiceObj : __SVCObj {
 				);
 				delete conf;
 			}
-			return (int)(*this);
+			return GetStatus();
 		}
-		extends_end(Status)
-
 
 
 		ServiceObj(SC_HANDLE hSCM, LPCTSTR Name) {
-			extends_init(Status);
 			_VERIFY(hSCM!=0);
 			name = new char[strlen(Name)];
 			strcpy(name, Name);
@@ -313,6 +307,15 @@ class SCMObj : __SVCObj {
 			return (hSCM != 0);
 		}
 
+		void tolog(char *s) {
+			FILE *f = fopen("log.txt", "a");
+			if (f) {
+				fputs(s, f);
+				fputs("\n", f);
+				fclose(f);
+			}
+		}
+
 
 		void *getEnum(DWORD &size, DWORD &num) {
 			if (!Inited())
@@ -328,14 +331,26 @@ class SCMObj : __SVCObj {
 			size = 0;
 #define put(x) tmp[size++] = x;
 #define puts(x) strcpy(tmp+size, x); size+=strlen(x)+1;
-			for (int i=0; i<num; i++, stat++) {
-				int x = ServiceObj(hSCM, stat->lpServiceName).Status;
+			for (DWORD i=0; i<num; i++, stat++) {
+                char buf[20];
+                itoa( size, buf, 10 );
+                tolog(buf);
+                tolog("Getting status of");
+                tolog(stat->lpServiceName);
+                ServiceObj obj(hSCM, stat->lpServiceName);
+                tolog("Getting status");
+				int x = obj.GetStatus();
+				obj.~ServiceObj();
+				tolog("Put it");
 				put(x);
 				puts(stat->lpServiceName);
 				puts(stat->lpDisplayName);
 			}
+			tolog("s3");
 			char *buf = new char[size];
+			tolog("s4");
 			memcpy(buf, tmp, size);
+			tolog("s5");
 			return buf;
 		}
 

@@ -1,0 +1,194 @@
+0
+Getting status of
+AeLookupSvc
+Getting status
+Put it
+51
+Getting status of
+ALG
+Getting status
+Put it
+87
+Getting status of
+AppIDSvc
+Getting status
+Put it
+122
+Getting status of
+Appinfo
+Getting status
+Put it
+153
+Getting status of
+AppMgmt
+Getting status
+Put it
+186
+Getting status of
+aspnet_state
+Getting status
+Put it
+225
+Getting status of
+AudioEndpointBuilder
+Getting status
+Put it
+296
+Getting status of
+Audiosrv
+Getting status
+Put it
+320
+Getting status of
+AxInstSV
+Getting status
+Put it
+360
+Getting status of
+BDESVC
+Getting status
+Put it
+403
+Getting status of
+BFE
+Getting status
+Put it
+434
+Getting status of
+BITS
+Getting status
+Put it
+488
+Getting status of
+Browser
+Getting status
+Put it
+517
+Getting status of
+bthserv
+Getting status
+Put it
+553
+Getting status of
+CertPropSvc
+Getting status
+Put it
+594
+Getting status of
+clr_optimization_v2.0.50727_32
+Getting status
+Put it
+671
+Getting status of
+clr_optimization_v4.0.30319_32
+Getting status
+Put it
+748
+Getting status of
+COMSysApp
+Getting status
+Put it
+785
+Getting status of
+CryptSvc
+Getting status
+Put it
+815
+Getting status of
+CscService
+Getting status
+Put it
+844
+Getting status of
+DcomLaunch
+Getting status
+Put it
+894
+Getting status of
+defragsvc
+Getting status
+Put it
+926
+Getting status of
+Dhcp
+Getting status
+Put it
+944
+Getting status of
+Dnscache
+Getting status
+Put it
+965
+Getting status of
+dot3svc
+Getting status
+Put it
+998
+Getting status of
+DPS
+Getting status
+Put it
+1031
+Getting status of
+EapHost
+Getting status
+Put it
+1088
+Getting status of
+EFS
+Getting status
+Put it
+1128
+Getting status of
+ehRecvr
+Getting status
+Put it
+1174
+Getting status of
+ehSched
+Getting status
+Put it
+1224
+Getting status of
+EhttpSrv
+Getting status
+Put it
+1251
+Getting status of
+ekrn
+Getting status
+Put it
+1270
+Getting status of
+eventlog
+Getting status
+Put it
+1303
+Getting status of
+EventSystem
+Getting status
+Put it
+1337
+Getting status of
+Fax
+Getting status
+Put it
+1347
+Getting status of
+fdPHost
+Getting status
+Put it
+1392
+Getting status of
+FDResPub
+Getting status
+Put it
+1442
+Getting status of
+FontCache
+Getting status
+Put it
+1481
+Getting status of
+FontCache3.0.0.0
+Getting status

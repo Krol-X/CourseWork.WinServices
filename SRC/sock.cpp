@@ -33,6 +33,14 @@ Socket::~Socket() {
 
 
 //
+// МЕТОД: void Socket::Wait()
+//
+void Socket::Wait() {
+    wait(DELAY);
+}
+
+
+//
 // МЕТОД: bool Socket::SetNonBlocking()
 //
 // НАЗНАЧЕНИЕ: перевести сокет в неблокирующий режим
@@ -79,20 +87,6 @@ bool Socket::IsOpen() {
 //
 bool Socket::IsServer() {
 	return isserver;
-}
-
-
-#include <stdio.h>
-#ifndef countof
-#   define countof(a)	    (sizeof(a)/sizeof(a[0]))
-#endif
-int PrintError(IN DWORD dwErrorCode) {
-	TCHAR szErrorText[512];
-	if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwErrorCode, 0,
-	                   szErrorText, countof(szErrorText), NULL))
-		sprintf(szErrorText, "Error %d", dwErrorCode);
-	MessageBox(0, szErrorText, "Error", MB_OK | MB_ICONERROR);
-	return 1;
 }
 
 

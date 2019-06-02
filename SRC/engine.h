@@ -70,6 +70,7 @@ class Client {
 	private:
 		ClientParams param;
 	public:
+	    Client();
 		bool GetList(Address addr);
 		unsigned int ListSize();
 		ListItem* GetItem(unsigned int idx);
