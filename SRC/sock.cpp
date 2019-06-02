@@ -8,7 +8,12 @@
 #include "sock.h"
 #include <assert.h>
 #include <windows.h>
+#include <stdlib.h>
+#include <time.h>
 
+#define MAX_WAIT 1.0
+#define MAX_TRY  10
+#define DELAY    0.1
 
 //
 // ÊÎÍÑÒÐÓÊÒÎÐ: Socket::Socket()
@@ -28,12 +33,19 @@ Socket::~Socket() {
 
 
 //
-// ÌÅÒÎÄ: bool Socket::OpenRand()
+// ÌÅÒÎÄ: bool Socket::SetNonBlocking()
 //
-// ÍÀÇÍÀ×ÅÍÈÅ: îòêðûòü ñîêåò íà îäíîì èç ñâîáîäíûõ ïîðòîâ
+// ÍÀÇÍÀ×ÅÍÈÅ: ïåðåâåñòè ñîêåò â íåáëîêèðóþùèé ðåæèì
 //
-bool Socket::OpenRand() {
-	return Open(0);
+bool Socket::SetNonBlocking() {
+	unsigned long nonBlocking = 1;
+	bool r;
+#if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
+	r = ( fcntl( sock, F_SETFL, O_NONBLOCK, nonBlocking ) != -1 );
+#elif PLATFORM == PLATFORM_WINDOWS
+	r = ( ioctlsocket( sock, FIONBIO, &nonBlocking ) == 0 );
+#endif
+	return r;
 }
 
 
@@ -61,78 +73,99 @@ bool Socket::IsOpen() {
 
 
 //
-// ÌÅÒÎÄ: bool Socket::Send(Address dest, void *data, int size)
+// ÌÅÒÎÄ: bool Socket::IsServer()
 //
-// ÍÀÇÀÍ×ÅÍÈÅ: Îòïðàâèòü äàííûå
+// ÂÅÐÍÓÒÜ: òèï ñîêåòà
 //
-// ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
-//
-bool Socket::Send(Address dest, void *data, int size) {
-	assert( data );
-	assert( size > 0 );
-	if ( !IsOpen() )
-		return false;
-	assert( dest.addr != 0 );
-	assert( dest.port != 0 );
-	sockaddr_in to;
-	to.sin_family = AF_INET;
-	to.sin_addr.s_addr = htonl( dest.addr );
-	to.sin_port = htons( (unsigned short)dest.port );
-	int sent_bytes = sendto( sock, (char *)data, size, 0,
-	                         (sockaddr *)&to, sizeof(to) );
-	return sent_bytes == size;
+bool Socket::IsServer() {
+	return isserver;
+}
+
+
+#include <stdio.h>
+#ifndef countof
+#   define countof(a)	    (sizeof(a)/sizeof(a[0]))
+#endif
+int PrintError(IN DWORD dwErrorCode) {
+	TCHAR szErrorText[512];
+	if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwErrorCode, 0,
+	                   szErrorText, countof(szErrorText), NULL))
+		sprintf(szErrorText, "Error %d", dwErrorCode);
+	MessageBox(0, szErrorText, "Error", MB_OK | MB_ICONERROR);
+	return 1;
 }
 
 
 //
-// ÌÅÒÎÄ: int Socket::Receive(Address src, void *data, int size)
+// ÌÅÒÎÄ: bool Socket::Send(void *data, int size)
 //
-// ÍÀÇÀÍ×ÅÍÈÅ: Ïîëó÷èòü äàííûå
-//
-// ÂÎÇÂÐÀÙÀÅÒ: êîëè÷åñòâî ïðèíÿòûõ áàéò
-//
-int Socket::Receive(Address src, void *data, int size) {
-	assert( data );
-	assert( size > 0 );
-	if ( !IsOpen() )
-		return 0;
-	sockaddr_in from;
-	int fromLength = sizeof(from);
-	int received_bytes = recvfrom( sock, (char *)data, size, 0,
-	                               (sockaddr *)&from, &fromLength );
-	if ( received_bytes <= 0 )
-		return 0;
-	src.addr = ntohl( from.sin_addr.s_addr );
-	src.port = ntohl( from.sin_port );
-	return received_bytes;
-}
-
-
-//
-// ÌÅÒÎÄ: Socket::Send(void *data, int size)
-//
-// ÍÀÇÀÍ×ÅÍÈÅ: Îòïðàâèòü äàííûå ÷åðåç óñòàíîâëåííîå ñîåäèíåíèå
+// ÍÀÇÍÀ×ÅÍÈÅ: Îòïðàâèòü äàííûå ÷åðåç óñòàíîâëåííîå ñîåäèíåíèå
 //
 // ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
 //
 bool Socket::Send(void *data, int size) {
-	if ( IsConnected() )
-		return Send( addr, data, size );
-	else
+	assert( data );
+	assert( size > 0 );
+	if ( !IsOpen() )
 		return false;
+	int _sock;
+	if ( IsServer() )
+		_sock = consock;
+	else
+		_sock = sock;
+	int sent_bytes = send( _sock, (char *)data, size, 0 );
+	return sent_bytes == size;
 }
 
 
 //
 // ÌÅÒÎÄ: int Socket::Receive(void *data, int size)
 //
-// ÍÀÇÀÍ×ÅÍÈÅ: Ïîëó÷èòü äàííûå ÷åðåç óñòàíîâëåííîå ñîåäèíåíèå
+// ÍÀÇÍÀ×ÅÍÈÅ: Ïîëó÷èòü äàííûå ÷åðåç óñòàíîâëåííîå ñîåäèíåíèå
 //
 // ÂÎÇÂÐÀÙÀÅÒ: êîëè÷åñòâî ïðèíÿòûõ áàéò
 //
 int Socket::Receive(void *data, int size) {
-	if ( IsConnected() )
-		return Receive( addr, data, size );
+	assert( data );
+	assert( size > 0 );
+	if ( !IsOpen() )
+		return 0;
+	int _sock;
+	if ( IsServer() )
+		_sock = consock;
 	else
-		return false;
+		_sock = sock;
+	int received_bytes;
+	clock_t start = clock();
+	for ( int trycount = 0; trycount < MAX_TRY; trycount++ ) {
+		double seconds;
+		do {
+			received_bytes = recv( _sock, (char *)data, size, 0 );
+			if ( received_bytes > 0 )
+				break;
+			clock_t end = clock();
+			seconds = (double)( end - start ) / CLOCKS_PER_SEC;
+			wait(DELAY);
+		} while ( seconds < MAX_WAIT );
+		if ( received_bytes > 0 )
+			break;
+	}
+	if ( received_bytes <= 0 )
+		return 0;
+	return received_bytes;
 }
+
+
+//
+// ÔÓÍÊÖÈß: void wait( float seconds )
+//
+// ÍÀÇÍÀ×ÅÍÈÅ: ïðèîñòàíîâèòü ïðîãðàììó íà íåêîòîðîå âðåìÿ
+//
+void wait( float seconds ) {
+#if PLATFORM == PLATFORM_WINDOWS
+	Sleep( (int) ( seconds * 1000.0f ) );
+#else
+	usleep( (int) ( seconds * 1000000.0f ) );
+#endif
+}
+

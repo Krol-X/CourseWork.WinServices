@@ -10,7 +10,8 @@
 
 class TcpSocket : public Socket {
 	public:
-		bool Open(unsigned short port);
+		bool Open();
+		bool Bind(Address addr);
 		bool Accept();
 		bool Connect(Address addr);
 		bool IsConnected();

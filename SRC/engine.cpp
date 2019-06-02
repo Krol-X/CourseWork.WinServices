@@ -99,15 +99,19 @@ static void *Server_main(void *_param) {
 //
 // ВОЗВРАЩАЕТ: флаг успеха операции
 //
-bool Server::Start(unsigned int port) {
+bool Server::Start(unsigned short port) {
 	assert( !IsWorking() );
 	bool r;
-	if (port < 1024)
-		r = param.sock.OpenRand();
-	else
-		r = param.sock.Open( port );
+	r = param.sock.Open();
 	if (r) {
-		r = ( pthread_create( &thread, 0, Server_main, &param ) == 0 );
+		if (port < 1024)
+			r = param.sock.Bind({INADDR_ANY, 0});
+		else
+			r = param.sock.Bind({INADDR_ANY, port});
+	}
+	if (r) {
+		if ( (r = param.sock.SetNonBlocking()) == true )
+			r = ( pthread_create( &thread, 0, Server_main, &param ) == 0 );
 		if (!r)
 			param.sock.Close();
 	}
@@ -164,34 +168,37 @@ bool Client::GetList(Address addr) {
 	Datagram *outdg = (Datagram *) outbuf;
 	outdg->id = PROTOCOLID;
 	assert( !sock->IsOpen() );
-	r = sock->OpenRand();
+	r = sock->Open();
 	if (r) {
 		r = sock->Connect( addr );
-		if (r) {
+		if ( r && sock->SetNonBlocking() ) {
 			outdg->cmd_cou = CMD_LIST;
-			sock->Send(outdg, RESERVED_BYTES);
-			sock->Receive(indg, BUF_SIZE);
-			if ( indg->id == PROTOCOLID ) {
-				pthread_mutex_lock(&param.mutex);
-				param.list.clear();
-				char *pbuf = (char *) &indg->data;
-				ListItem *item;
-				for (int i=0; i<indg->cmd_cou & 0xFFFFFF; i++) {
-					char *str1 = (char *) &pbuf[1];
-					char *str2 = (char *) str1+strlen(str1)+1;
-					int len1 = strlen(str1);
-					int len2 = strlen(str2);
-					item = (ListItem *) new char[1+2*sizeof(char *)+len1+len2+2];
-					item->state = pbuf[0];
-					item->name = (char *) &item->data;
-					item->viewname = (char *) &item->data[len1+1];
-					strcpy(item->name, str1);
-					strcpy(item->viewname, str2);
-					param.list.insert(param.list.end(), *item);
-					pbuf = (char *) str2+strlen(str2)+1;
+			r = false;
+			if ( sock->Send( outdg, RESERVED_BYTES ) )
+				if (sock->Receive( indg, BUF_SIZE ) > RESERVED_BYTES
+				        && indg->id == PROTOCOLID ) {
+					pthread_mutex_lock(&param.mutex);
+					param.list.clear();
+					char *pbuf = (char *) &indg->data;
+					ListItem *item;
+					for (int i=0; i<indg->cmd_cou & 0xFFFFFF; i++) {
+						char *str1 = (char *) &pbuf[1];
+						char *str2 = (char *) str1+strlen(str1)+1;
+						int len1 = strlen(str1);
+						int len2 = strlen(str2);
+						item = (ListItem *) new
+						       char[1+2*sizeof(char *)+len1+len2+2];
+						item->state = pbuf[0];
+						item->name = (char *) &item->data;
+						item->viewname = (char *) &item->data[len1+1];
+						strcpy(item->name, str1);
+						strcpy(item->viewname, str2);
+						param.list.insert(param.list.end(), *item);
+						pbuf = (char *) str2+strlen(str2)+1;
+					}
+					pthread_mutex_unlock(&param.mutex);
+					r = true;
 				}
-				pthread_mutex_unlock(&param.mutex);
-			}
 			sock->Disconnect();
 		}
 		if ( sock->IsOpen() )
@@ -231,20 +238,6 @@ ListItem* Client::GetItem(unsigned int idx) {
 ////////////////////////////////////////////////////////////////////////////////
 // СЕКЦИЯ: Вспомогательные функции
 //
-
-//
-// ФУНКЦИЯ: void wait( float seconds )
-//
-// НАЗНАЧЕНИЕ: приостановить программу на некоторое время
-//
-void wait( float seconds ) {
-#if PLATFORM == PLATFORM_WINDOWS
-	Sleep( (int) ( seconds * 1000.0f ) );
-#else
-	usleep( (int) ( seconds * 1000000.0f ) );
-#endif
-}
-
 
 //
 // ФУНКЦИЯ: bool InitializeSockets()

@@ -43,7 +43,7 @@ class Server {
 		pthread_t thread;
 		ServerParams param;
 	public:
-		bool Start(unsigned int port = 0);
+		bool Start(unsigned short port = 0);
 		bool IsWorking();
 		void Stop();
 };
@@ -75,10 +75,6 @@ class Client {
 		ListItem* GetItem(unsigned int idx);
 		//ListItem *SetSvc();
 };
-
-
-// Приостановить программу на некоторое время
-void Wait( float seconds );
 
 // Инициализировать работу с сокетами
 bool InitializeSockets();

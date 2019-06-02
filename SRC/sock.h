@@ -5,8 +5,6 @@
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
-#define MAX_CLIENTS 5
-
 
 #define PLATFORM_WINDOWS  1
 #define PLATFORM_MAC      2
@@ -31,7 +29,6 @@
 #else
 #error unknown platform!
 #endif
-
 
 
 //
@@ -63,7 +60,6 @@ struct Address {
 };
 
 
-
 //
 // КЛАСС: Socket
 //
@@ -73,21 +69,25 @@ class Socket {
 	protected:
 		int sock;
 		int consock; // сокет соединения
-		Address addr;
+		bool isserver;
 	public:
 		Socket();
 		~Socket();
-		virtual bool Open(unsigned short port) = 0;
-		bool OpenRand();
+		bool SetNonBlocking();
+		virtual bool Open() = 0;
+		virtual bool Bind(Address addr) = 0;
 		void Close();
 		bool IsOpen();
+		bool IsServer();
 		virtual bool Accept() = 0;
 		virtual bool Connect(Address addr) = 0;
 		virtual bool IsConnected() = 0;
 		virtual void Disconnect() = 0;
-		bool Send(Address dest, void *data, int size);
-		int Receive(Address src, void *data, int size);
 		bool Send(void *data, int size);
 		int Receive(void *data, int size);
 };
+
+
+// Приостановить программу на некоторое время
+void wait( float seconds );
 

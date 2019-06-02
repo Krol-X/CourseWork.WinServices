@@ -305,7 +305,7 @@ class SCMObj : __SVCObj {
 			}
 			hSCM = OpenSCManager(MachineName, DBName, Access);
 			err = (hSCM == NULL);
-			return err;
+			return !err;
 		}
 
 

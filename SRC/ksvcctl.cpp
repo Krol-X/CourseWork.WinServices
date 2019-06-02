@@ -217,10 +217,10 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					addr = Address(adr, port);
 					SaveSettings();
 					if (SendMessage(GetDlgItem(hDlg, IDD1_CLIENT),
-					                BM_GETCHECK, 0L, 0L))
+					                BM_GETCHECK, 0, 0))
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
-					                BM_GETCHECK, 0L, 0L)) {
+					                BM_GETCHECK, 0, 0)) {
 						if (server.Start(addr.port)) {
 							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
