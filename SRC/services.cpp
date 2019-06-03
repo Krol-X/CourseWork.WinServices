@@ -1,16 +1,6 @@
 #include "services.h"
 
 
-//void tolog(char *s) {
-//	FILE *f = fopen("log.txt", "a");
-//	if (f) {
-//		fputs(s, f);
-//		fputs("\n", f);
-//		fclose(f);
-//	}
-//}
-
-
 void *SVC_getEnum(DWORD &sz, DWORD &num) {
 	DWORD Access = SC_MANAGER_CONNECT
 	               | SC_MANAGER_ENUMERATE_SERVICE
@@ -35,21 +25,13 @@ void *SVC_getEnum(DWORD &sz, DWORD &num) {
 	for (DWORD i=0; i<num; i++, stat++) {
 		char buf[20];
 		itoa( sz, buf, 10 );
-//		tolog(buf);
-//		tolog("Getting status of");
-//		tolog(stat->lpServiceName);
-//		tolog("Getting status");
 		int x = SVC_GetStatus(stat->lpServiceName);
-//		tolog("Put it");
 		put(x);
 		puts(stat->lpServiceName);
 		puts(stat->lpDisplayName);
 	}
-//	tolog("s3");
 	char *buf = new char[sz];
-//	tolog("s4");
 	memcpy(buf, tmp, sz);
-//	tolog("s5");
 	return buf;
 }
 
@@ -60,7 +42,6 @@ int SVC_GetStatus(char *name) {
 	DWORD Access = SC_MANAGER_CONNECT
 	               | SC_MANAGER_ENUMERATE_SERVICE
 	               ;
-//	tolog("Open service");
 	hSCM = OpenSCManager(0, 0, Access);
 	if ( hSCM == 0 )
 		return -1;
@@ -71,29 +52,24 @@ int SVC_GetStatus(char *name) {
 		_VERIFY(CloseServiceHandle(hService));
 		return -1;
 	}
-//	tolog("Getting status");
 	// 1. Get status
 	SERVICE_STATUS stat;
 	if (!QueryServiceStatus(hService, &stat)) {
 		r |= 0x40;
 	}
 	// 2. Get service run config
-//	tolog("Getting config");
 	DWORD cbNeeded;
 	char buf[8096];
 	LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG) buf;
 	if (!QueryServiceConfig(hService, conf, 8096, &cbNeeded)) {
 		r |= 0x80;
 	}
-//	tolog("ok");
 	// tsTTTSSS; T - start type, S - state,
 	// t - err get type, s - err get state
 	r = (conf->dwStartType << 3) + stat.dwCurrentState;
-//	tolog("Delete conf");
 	delete[] conf;
 	_VERIFY(CloseServiceHandle(hService));
 	_VERIFY(CloseServiceHandle(hSCM));
-//	tolog("ok");
 	return r;
 }
 
@@ -169,6 +145,6 @@ static BOOL ControlServiceAndWait(
 
 
 int SVC_SetStatus(char *name, int flags) {
-    // ...
+	// ...
 	return SVC_GetStatus(name);
 }

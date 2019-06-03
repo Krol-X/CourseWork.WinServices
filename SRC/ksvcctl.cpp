@@ -25,6 +25,8 @@ HWND InitClientWnd();
 bool InitListView(HWND);
 LRESULT CALLBACK ClientWndProc(HWND, UINT, WPARAM, LPARAM);
 void RefreshWindow(HWND);
+void UpdateClientMenu(HMENU hMenu, BYTE state);
+UINT LV_Selection();
 
 
 //
@@ -47,7 +49,6 @@ TCHAR szConnect[MAX_LOADSTRING];
 TCHAR szStop[MAX_LOADSTRING];
 TCHAR szError[MAX_LOADSTRING];
 TCHAR szErrStart[MAX_LOADSTRING];
-//TCHAR szErrConnect[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];
 Server *server;
 Client *client;
@@ -118,14 +119,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LoadString(hInstance, IDS_STOP, szStop, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERROR, szError, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERRSTART, szErrStart, MAX_LOADSTRING);
-//	LoadString(hInstance, IDS_ERRCONNECT, szErrConnect, MAX_LOADSTRING);
 	LoadString(hInstance, IDS_ERRLDLIST, szErrLdList, MAX_LOADSTRING);
 	LoadSettings();
 	int r;
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
-            client = new Client();
+			client = new Client();
 			if ( !(hClientWnd = InitClientWnd()) )
 				break;
 			ShowWindow(hClientWnd, SW_SHOW);
@@ -136,7 +136,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 				DispatchMessage(&msg);
 			}
 			client->~Client();
-            delete client;
+			delete client;
 		}
 	} while (r);
 	ShutdownSockets();
@@ -201,7 +201,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 	BOOL fError;
 	switch (msg) {
 		case WM_INITDIALOG:
-		    server = new Server();
+			server = new Server();
 			DWORD adr;
 			WORD port;
 			SendMessage(GetDlgItem(hDlg, IDD1_IP),
@@ -261,8 +261,8 @@ idd1_server:
 			}
 			return true;
 		case WM_CLOSE:
-		    server->~Server();
-		    delete server;
+			server->~Server();
+			delete server;
 			SendMessage(GetDlgItem(hDlg, IDD1_IP),
 			            IPM_GETADDRESS, 0, (LPARAM) &adr);
 			port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
@@ -347,21 +347,13 @@ bool InitListView(HWND hWnd) {
 //
 // НАЗНАЧЕНИЕ: обрабатывает сообщения от окна клиента
 //
-// WM_COMMAND	- обработка меню приложения
-// WM_NOTIFY	- обработка запросов отображения базы данных в ListView
-// WM_SIZE      - обновить отображение окна
-// WM_DESTROY	- ввести сообщение о выходе и вернуться
-//
 LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
                                LPARAM lParam) {
 	TCHAR buf[MAX_LOADSTRING];
 	ListItem *item;
 	switch (message) {
-		case WM_CREATE:
-			//if (!client->GetList(addr))
-			//	MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
-			//RefreshWindow(hWnd);
-			break;
+//		case WM_CREATE:
+//			break;
 
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
@@ -426,6 +418,8 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 						                 LoadMenu(hInst, "IDM_POPUPMENU"), 0);
 						if (!hmenuPopup)
 							break;
+						ListItem *item = client->GetItem( LV_Selection() );
+						UpdateClientMenu( hmenuPopup, item->state );
 						POINT cursor;
 						GetCursorPos(&cursor);
 						TrackPopupMenu(hmenuPopup,
@@ -450,12 +444,12 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 
 
 //
-// ФУНКЦИЯ: RefreshWindow(HWND)
+// ФУНКЦИЯ: void RefreshWindow(HWND)
 //
 // НАЗНАЧЕНИЕ: обновляет элементы окна клиента
 //
 void RefreshWindow(HWND hWnd) {
-    pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&mutex);
 	// 1. Устанавливаем количество записей ListView
 	ListView_SetItemCount( hListView, client->ListSize() );
 	// 2. Изменяем размеры ListView
@@ -469,6 +463,54 @@ void RefreshWindow(HWND hWnd) {
 	           true);
 	for (int i=0; i<IDS_COL_num; i++)
 		ListView_SetColumnWidth(hListView, i, LVSCW_AUTOSIZE_USEHEADER);
-    pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&mutex);
+}
+
+
+//
+// ФУНКЦИЯ: void UpdateClientMenu(HMENU hMenu, BYTE state)
+//
+// НАЗНАЧЕНИЕ: обновляет доступность элементов меню
+//
+void UpdateClientMenu(HMENU hMenu, BYTE state) {
+	const UINT mf_state[] = { MF_DISABLED, MF_ENABLED };
+	BYTE st;
+	st = ( state & 0x40 )? 0: state & 7;
+	EnableMenuItem( hMenu, IDM_START,
+	                mf_state[ (int)(st == SERVICE_STOPPED) ] );
+	EnableMenuItem( hMenu, IDM_PAUSE,
+	                mf_state[ (int)(st == SERVICE_RUNNING) ] );
+	EnableMenuItem( hMenu, IDM_RESUME,
+	                mf_state[ (int)(st == SERVICE_PAUSED) ] );
+	EnableMenuItem( hMenu, IDM_STOP,
+	                mf_state[ (int)( st == SERVICE_RUNNING
+	                                 | st == SERVICE_PAUSED) ] );
+	st = ( state & 0x80 )? 7: (state >> 3) & 7;
+	EnableMenuItem( hMenu, IDM_AUTO,
+	                mf_state[ (int)(st != SERVICE_AUTO_START
+	                                         && st > 1) ] );
+	EnableMenuItem( hMenu, IDM_DEMAND,
+	                mf_state[ (int)(st != SERVICE_DEMAND_START
+	                                         && st > 1) ] );
+	EnableMenuItem( hMenu, IDM_DISABLED,
+	                mf_state[ (int)(st != SERVICE_DISABLED
+	                                         && st > 1) ] );
+}
+
+
+//
+// ФУНКЦИЯ: UINT LV_Selection()
+//
+// НАЗНАЧЕНИЕ: получить номер выделенного элемента
+//
+UINT LV_Selection() {
+	pthread_mutex_lock(&mutex);
+	INT index;
+	index = ListView_GetNextItem(hListView,
+	                             -1, LVNI_ALL | LVNI_SELECTED);
+	if (index == -1)
+		index = client->ListSize();
+	pthread_mutex_unlock(&mutex);
+	return (UINT) index;
 }
 

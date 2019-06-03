@@ -5,8 +5,6 @@
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
-// TODO: описания
-//
 
 #ifndef services_h_
 #define services_h_

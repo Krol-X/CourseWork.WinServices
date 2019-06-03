@@ -17,7 +17,6 @@ STRINGTABLE {
 	IDS_STOP,                          "Остановить"
 	IDS_ERROR,                         "Ошибка"
 	IDS_ERRSTART,                      "Не удалось запустить сервер!"
-	//IDS_ERRCONNECT,                    "Не удалось подключится к серверу!"
 	IDS_ERRLDLIST,                     "Не удалось получить список!"
 	IDS_UNKNOWN,                       "Неизвестно"
 }
