@@ -14,6 +14,7 @@
 #include "resource.h"
 #include "engine.h"
 
+pthread_mutex_t mutex;
 
 //
 // Прототипы функций модуля
@@ -48,8 +49,8 @@ TCHAR szError[MAX_LOADSTRING];
 TCHAR szErrStart[MAX_LOADSTRING];
 //TCHAR szErrConnect[MAX_LOADSTRING];
 TCHAR szErrLdList[MAX_LOADSTRING];
-Server server;
-Client client;
+Server *server;
+Client *client;
 
 
 //
@@ -124,19 +125,20 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	do {
 		r = DialogBox(hInst, MAKEINTRESOURCE(IDD_CHOOSE), 0, ChooseDlgProc);
 		if (r) {
+            client = new Client();
 			if ( !(hClientWnd = InitClientWnd()) )
 				break;
 			ShowWindow(hClientWnd, SW_SHOW);
 			UpdateWindow(hClientWnd);
-			RefreshWindow(hClientWnd);
 			MSG msg;
 			while (GetMessage(&msg, NULL, 0, 0)) {
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
+			client->~Client();
+            delete client;
 		}
 	} while (r);
-	server.Stop();
 	ShutdownSockets();
 	SaveSettings();
 	return EXIT_SUCCESS;
@@ -199,6 +201,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 	BOOL fError;
 	switch (msg) {
 		case WM_INITDIALOG:
+		    server = new Server();
 			DWORD adr;
 			WORD port;
 			SendMessage(GetDlgItem(hDlg, IDD1_IP),
@@ -221,7 +224,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 						EndDialog(hDlg, -1);
 					if (SendMessage(GetDlgItem(hDlg, IDD1_SERVER),
 					                BM_GETCHECK, 0, 0)) {
-						if (server.Start(addr.port)) {
+						if (server->Start(addr.port)) {
 							EnableWindow(GetDlgItem(hDlg, IDD1_START), FALSE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_STOP), TRUE);
 							EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), FALSE);
@@ -233,7 +236,7 @@ INT_PTR CALLBACK ChooseDlgProc(HWND hDlg, UINT msg, WPARAM wParam,
 					}
 					break;
 				case IDD1_STOP:
-					server.Stop();
+					server->Stop();
 					EnableWindow(GetDlgItem(hDlg, IDD1_START), TRUE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_STOP), FALSE);
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT), TRUE);
@@ -245,9 +248,9 @@ idd1_server:
 					SetWindowText(GetDlgItem(hDlg, IDD1_START), szStart);
 					SetWindowText(GetDlgItem(hDlg, IDD1_STOP), szStop);
 					EnableWindow(GetDlgItem(hDlg, IDD1_START),
-					             !server.IsWorking());
+					             !server->IsWorking());
 					EnableWindow(GetDlgItem(hDlg, IDD1_CLIENT),
-					             !server.IsWorking());
+					             !server->IsWorking());
 					break;
 				case IDD1_CLIENT:
 					EnableWindow(GetDlgItem(hDlg, IDD1_IP), TRUE);
@@ -258,6 +261,8 @@ idd1_server:
 			}
 			return true;
 		case WM_CLOSE:
+		    server->~Server();
+		    delete server;
 			SendMessage(GetDlgItem(hDlg, IDD1_IP),
 			            IPM_GETADDRESS, 0, (LPARAM) &adr);
 			port = GetDlgItemInt(hDlg, IDD1_PORT, &fError, false);
@@ -353,15 +358,15 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 	ListItem *item;
 	switch (message) {
 		case WM_CREATE:
-			if (!client.GetList(addr))
-				MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
+			//if (!client->GetList(addr))
+			//	MessageBox(hWnd, szErrLdList, szError, MB_ICONERROR | MB_OK);
 			//RefreshWindow(hWnd);
 			break;
 
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDM_REFRESH:
-					if (!client.GetList(addr))
+					if (!client->GetList(addr))
 						MessageBox(hWnd, szErrLdList,
 						           szError, MB_ICONERROR | MB_OK);
 					RefreshWindow(hWnd);
@@ -380,10 +385,10 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 					case LVN_GETDISPINFO:
 						itemid = lpdi->item.iItem;
 						if (lpdi->item.mask & LVIF_TEXT) {
-							if ( client.ListSize() == 0 ) {
+							if ( client->ListSize() == 0 ) {
 								break;
 							}
-							item = client.GetItem( itemid );
+							item = client->GetItem( itemid );
 							switch(lpdi->item.iSubItem) {
 								case 0:
 									lpdi->item.pszText = item->name;
@@ -450,19 +455,20 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 // НАЗНАЧЕНИЕ: обновляет элементы окна клиента
 //
 void RefreshWindow(HWND hWnd) {
+    pthread_mutex_lock(&mutex);
 	// 1. Устанавливаем количество записей ListView
-	ListView_SetItemCount( hListView, client.ListSize() );
+	ListView_SetItemCount( hListView, client->ListSize() );
 	// 2. Изменяем размеры ListView
-	RECT rc, sbrc;
+	RECT rc;
 	GetClientRect(hWnd, &rc);
-	LONG sbheight = (sbrc.bottom - sbrc.top);
 	MoveWindow(hListView,
 	           rc.left,
 	           rc.top,
 	           rc.right - rc.left,
-	           rc.bottom - rc.top - sbheight,
+	           rc.bottom - rc.top,
 	           true);
 	for (int i=0; i<IDS_COL_num; i++)
 		ListView_SetColumnWidth(hListView, i, LVSCW_AUTOSIZE_USEHEADER);
+    pthread_mutex_unlock(&mutex);
 }
 

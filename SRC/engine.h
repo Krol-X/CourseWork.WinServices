@@ -5,6 +5,10 @@
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
+
+#ifndef engine_h_
+#define engine_h_
+
 #include "tcpsock.h"
 #define SocketType TcpSocket
 
@@ -46,6 +50,7 @@ class Server {
 		bool Start(unsigned short port = 0);
 		bool IsWorking();
 		void Stop();
+		~Server();
 };
 
 
@@ -57,7 +62,6 @@ class Server {
 struct ClientParams {
 	SocketType sock;
 	vector<ListItem> list;
-	pthread_mutex_t mutex;
 };
 
 
@@ -82,4 +86,6 @@ bool InitializeSockets();
 
 // Завершить работу с сокетами
 void ShutdownSockets();
+
+#endif
 

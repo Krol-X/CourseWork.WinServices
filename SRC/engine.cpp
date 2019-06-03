@@ -10,6 +10,7 @@
 #include "services.h"
 #include <stdio.h>
 
+extern pthread_mutex_t mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 // СЕКЦИЯ: Настройки, константы и структура датаграммы
@@ -40,14 +41,14 @@ struct Datagram {
 // СЕКЦИЯ: Сервер
 //
 
-#define GetParam(x, y) pthread_mutex_lock(&param.mutex); \
-	x = param.y; pthread_mutex_unlock(&param.mutex);
-#define SetParam(x, y) pthread_mutex_lock(&param.mutex); \
-	param.x = y; pthread_mutex_unlock(&param.mutex);
-#define GetParam1(x, y) pthread_mutex_lock(&param->mutex); \
-	x = param->y; pthread_mutex_unlock(&param->mutex);
-#define SetParam1(x, y) pthread_mutex_lock(&param->mutex); \
-	param->x = y; pthread_mutex_unlock(&param->mutex);
+#define GetParam(x, y) pthread_mutex_lock(&mutex); \
+	x = param.y; pthread_mutex_unlock(&mutex);
+#define SetParam(x, y) pthread_mutex_lock(&mutex); \
+	param.x = y; pthread_mutex_unlock(&mutex);
+#define GetParam1(x, y) pthread_mutex_lock(&mutex); \
+	x = param->y; pthread_mutex_unlock(&mutex);
+#define SetParam1(x, y) pthread_mutex_lock(&mutex); \
+	param->x = y; pthread_mutex_unlock(&mutex);
 
 
 //
@@ -64,7 +65,6 @@ static void *Server_main(void *_param) {
 	unsigned char inbuf[BUF_SIZE], outbuf[BUF_SIZE];
 	Datagram *indg = (Datagram *) inbuf;
 	Datagram *outdg = (Datagram *) outbuf;
-	SCMObj scm;
 	void *data;
 	do {
 		if ( sock->Accept() ) {
@@ -73,13 +73,12 @@ static void *Server_main(void *_param) {
 			        && indg->id == PROTOCOLID ) {
 				switch ( indg->cmd_cou ) {
 					case CMD_LIST:
-						if ( scm.Init() ) {
-							DWORD size, num;
-							data = scm.getEnum(size, num);
-							memcpy( &outdg->data, data, size );
-							outdg->cmd_cou = CMD_LIST + num;
-							sock->Send(outdg, size + RESERVED_BYTES);
-						}
+						DWORD sz, num;
+						sz = num = 0;
+						data = SVC_getEnum(sz, num);
+						memcpy( &outdg->data, data, sz );
+						outdg->cmd_cou = CMD_LIST + num;
+						sock->Send(outdg, sz + RESERVED_BYTES);
 						break;
 					case CMD_SET:
 						// ...
@@ -150,6 +149,10 @@ void Server::Stop() {
 }
 
 
+Server::~Server() {
+	Stop();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // СЕКЦИЯ: Клиент
@@ -168,7 +171,7 @@ Client::Client() {
 // ВОЗВРАЩАЕТ: флаг успеха операции
 //
 bool Client::GetList(Address addr) {
-	pthread_mutex_lock(&param.mutex);
+	pthread_mutex_lock(&mutex);
 	bool r;
 	Socket *sock = &param.sock;
 	unsigned char inbuf[BUF_SIZE], outbuf[BUF_SIZE];
@@ -213,7 +216,7 @@ bool Client::GetList(Address addr) {
 		if ( sock->IsOpen() )
 			sock->Close();
 	}
-	pthread_mutex_unlock(&param.mutex);
+	pthread_mutex_unlock(&mutex);
 	return r;
 }
 
@@ -224,9 +227,9 @@ bool Client::GetList(Address addr) {
 // ВОЗВРАЩАЕТ: размер списка
 //
 unsigned int Client::ListSize() {
-	unsigned int r;
-	GetParam( r, list.size() );
-	return r;
+	//unsigned int r;
+	//GetParam( r, list.size() );
+	return param.list.size();
 }
 
 
@@ -237,9 +240,9 @@ unsigned int Client::ListSize() {
 //
 ListItem* Client::GetItem(unsigned int idx) {
 	struct ListItem* r;
-	pthread_mutex_lock(&param.mutex);
+	pthread_mutex_lock(&mutex);
 	r = &param.list[idx];
-	pthread_mutex_unlock(&param.mutex);
+	pthread_mutex_unlock(&mutex);
 	return r;
 }
 

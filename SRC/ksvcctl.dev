@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=1
 CompilerSet=4
 CompilerSettings=00000001g0000000001000000
-UnitCount=10
+UnitCount=11
 
 [VersionInfo]
 Major=1
@@ -141,6 +141,16 @@ BuildCmd=
 
 [Unit10]
 FileName=engine.cpp
+CompileCpp=1
+Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit11]
+FileName=services.cpp
 CompileCpp=1
 Folder=engine
 Compile=1

@@ -6,6 +6,9 @@
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 
+#ifndef sock_h_
+#define sock_h_
+
 #define PLATFORM_WINDOWS  1
 #define PLATFORM_MAC      2
 #define PLATFORM_UNIX     3
@@ -91,4 +94,6 @@ class Socket {
 
 // Приостановить программу на некоторое время
 void wait( float seconds );
+
+#endif
 

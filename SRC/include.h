@@ -74,9 +74,4 @@ using namespace std;
 #include <commctrl.h>
 #include <commdlg.h>
 
-//#include "net.h"
-#include "extends.h"
-
-//using namespace net;
-
 #endif
