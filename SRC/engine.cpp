@@ -81,7 +81,8 @@ static void *Server_main(void *_param) {
 						sock->Send(outdg, sz + RESERVED_BYTES);
 						break;
 					case CMD_SET:
-						// ...
+						SVC_SetStatus( (char *)(&indg->data[1]),
+						               indg->data[0] );
 						break;
 				}
 			}
@@ -211,6 +212,7 @@ bool Client::GetList(Address addr) {
 					r = true;
 				}
 			}
+			sock->Wait();
 			sock->Disconnect();
 		}
 		if ( sock->IsOpen() )
@@ -244,6 +246,41 @@ ListItem* Client::GetItem(unsigned int idx) {
 	r = &param.list[idx];
 	pthread_mutex_unlock(&mutex);
 	return r;
+}
+
+
+//
+// МЕТОД: void Client::SetSvc(Address addr, unsigned int idx, BYTE state)
+//
+// НАЗНАЧЕНИЕ: посылает команду для управления службой
+//
+void Client::SetSvc(Address addr, unsigned int idx, BYTE state) {
+	pthread_mutex_lock(&mutex);
+	if ( param.list.size() <= idx )
+		return;
+	ListItem *item = GetItem( idx );
+	bool r;
+	Socket *sock = &param.sock;
+	unsigned char outbuf[BUF_SIZE];
+	Datagram *outdg = (Datagram *) outbuf;
+	outdg->id = PROTOCOLID;
+	assert( !sock->IsOpen() );
+	r = sock->Open();
+	if (r) {
+		r = sock->Connect( addr );
+		if ( r && sock->SetNonBlocking() ) {
+			outdg->cmd_cou = CMD_SET;
+			outdg->data[0] = state;
+			strcpy( &outdg->data[1], item->name );
+			r = false;
+			sock->Wait();
+			sock->Send( outdg, RESERVED_BYTES + 2 + strlen(&outdg->data[1]) );
+			sock->Disconnect();
+		}
+		if ( sock->IsOpen() )
+			sock->Close();
+	}
+	pthread_mutex_unlock(&mutex);
 }
 
 

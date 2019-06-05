@@ -78,7 +78,7 @@ class Client {
 		bool GetList(Address addr);
 		unsigned int ListSize();
 		ListItem* GetItem(unsigned int idx);
-		//ListItem *SetSvc();
+		void SetSvc(Address addr, unsigned int idx, BYTE state);
 };
 
 // Инициализировать работу с сокетами

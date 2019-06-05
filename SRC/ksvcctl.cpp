@@ -13,6 +13,7 @@
 #include "include.h"
 #include "resource.h"
 #include "engine.h"
+#include "services.h"
 
 pthread_mutex_t mutex;
 
@@ -352,16 +353,66 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 	TCHAR buf[MAX_LOADSTRING];
 	ListItem *item;
 	switch (message) {
-//		case WM_CREATE:
-//			break;
+		case WM_CREATE:
+			pthread_mutex_lock(&mutex);
+			if (!client->GetList(addr))
+				MessageBox(hWnd, szErrLdList,
+				           szError, MB_ICONERROR | MB_OK);
+			RefreshWindow(hWnd);
+			pthread_mutex_unlock(&mutex);
+			break;
 
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDM_REFRESH:
+					pthread_mutex_lock(&mutex);
 					if (!client->GetList(addr))
 						MessageBox(hWnd, szErrLdList,
 						           szError, MB_ICONERROR | MB_OK);
 					RefreshWindow(hWnd);
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_START:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_CONTROL_START );
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_PAUSE:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_CONTROL_PAUSE );
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_RESUME:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_CONTROL_CONTINUE );
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_STOP:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_CONTROL_STOP );
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_AUTO:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_AUTO_START << 3 );
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_DEMAND:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_DEMAND_START << 3 );
+					pthread_mutex_unlock(&mutex);
+					break;
+				case IDM_DISABLED:
+					pthread_mutex_lock(&mutex);
+					client->SetSvc( addr, LV_Selection(),
+					                SERVICE_DISABLED << 3 );
+					pthread_mutex_unlock(&mutex);
 					break;
 			}
 			break;
@@ -380,7 +431,9 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 							if ( client->ListSize() == 0 ) {
 								break;
 							}
+							pthread_mutex_lock(&mutex);
 							item = client->GetItem( itemid );
+							pthread_mutex_unlock(&mutex);
 							switch(lpdi->item.iSubItem) {
 								case 0:
 									lpdi->item.pszText = item->name;
@@ -413,6 +466,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 						}
 						break;
 					case NM_RCLICK:
+						pthread_mutex_lock(&mutex);
 						HMENU hmenuPopup;
 						hmenuPopup = GetSubMenu(
 						                 LoadMenu(hInst, "IDM_POPUPMENU"), 0);
@@ -420,6 +474,7 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 							break;
 						ListItem *item = client->GetItem( LV_Selection() );
 						UpdateClientMenu( hmenuPopup, item->state );
+						pthread_mutex_unlock(&mutex);
 						POINT cursor;
 						GetCursorPos(&cursor);
 						TrackPopupMenu(hmenuPopup,
@@ -432,7 +487,9 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 			break;
 
 		case WM_SIZE:
+			pthread_mutex_lock(&mutex);
 			RefreshWindow(hWnd);
+			pthread_mutex_unlock(&mutex);
 			break;
 
 		case WM_DESTROY:
@@ -449,7 +506,6 @@ LRESULT CALLBACK ClientWndProc(HWND hWnd, UINT message, WPARAM wParam,
 // НАЗНАЧЕНИЕ: обновляет элементы окна клиента
 //
 void RefreshWindow(HWND hWnd) {
-	pthread_mutex_lock(&mutex);
 	// 1. Устанавливаем количество записей ListView
 	ListView_SetItemCount( hListView, client->ListSize() );
 	// 2. Изменяем размеры ListView
@@ -463,7 +519,6 @@ void RefreshWindow(HWND hWnd) {
 	           true);
 	for (int i=0; i<IDS_COL_num; i++)
 		ListView_SetColumnWidth(hListView, i, LVSCW_AUTOSIZE_USEHEADER);
-	pthread_mutex_unlock(&mutex);
 }
 
 
@@ -504,13 +559,11 @@ void UpdateClientMenu(HMENU hMenu, BYTE state) {
 // НАЗНАЧЕНИЕ: получить номер выделенного элемента
 //
 UINT LV_Selection() {
-	pthread_mutex_lock(&mutex);
 	INT index;
 	index = ListView_GetNextItem(hListView,
 	                             -1, LVNI_ALL | LVNI_SELECTED);
 	if (index == -1)
 		index = client->ListSize();
-	pthread_mutex_unlock(&mutex);
 	return (UINT) index;
 }
 
