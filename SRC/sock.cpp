@@ -33,6 +33,29 @@ Socket::~Socket() {
 
 
 //
+// МЕТОД: bool Socket::Bind(Address addr)
+//
+// НАЗНАЧЕНИЕ: привязать сокет к порту (сделать сервером)
+//
+// ВОЗВРАЩАЕТ: флаг успеха операции
+//
+bool Socket::Bind(Address addr) {
+	assert( IsOpen() );
+	// bind to port
+	sockaddr_in address;
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = addr.addr;
+	address.sin_port = htons( addr.port );
+	if ( bind( sock, (const sockaddr*) &address, sizeof(sockaddr_in) ) < 0 ) {
+		Close();
+		return false;
+	}
+	isserver = true;
+	return true;
+}
+
+
+//
 // МЕТОД: void Socket::Wait()
 //
 void Socket::Wait() {
@@ -87,66 +110,6 @@ bool Socket::IsOpen() {
 //
 bool Socket::IsServer() {
 	return isserver;
-}
-
-
-//
-// МЕТОД: bool Socket::Send(void *data, int size)
-//
-// НАЗНАЧЕНИЕ: Отправить данные через установленное соединение
-//
-// ВОЗВРАЩАЕТ: флаг успеха операции
-//
-bool Socket::Send(void *data, int size) {
-	assert( data );
-	assert( size > 0 );
-	if ( !IsOpen() )
-		return false;
-	int _sock;
-	if ( IsServer() )
-		_sock = consock;
-	else
-		_sock = sock;
-	int sent_bytes = send( _sock, (char *)data, size, 0 );
-	return sent_bytes == size;
-}
-
-
-//
-// МЕТОД: int Socket::Receive(void *data, int size)
-//
-// НАЗНАЧЕНИЕ: Получить данные через установленное соединение
-//
-// ВОЗВРАЩАЕТ: количество принятых байт
-//
-int Socket::Receive(void *data, int size) {
-	assert( data );
-	assert( size > 0 );
-	if ( !IsOpen() )
-		return 0;
-	int _sock;
-	if ( IsServer() )
-		_sock = consock;
-	else
-		_sock = sock;
-	int received_bytes;
-	clock_t start = clock();
-	for ( int trycount = 0; trycount < MAX_TRY; trycount++ ) {
-		double seconds;
-		do {
-			received_bytes = recv( _sock, (char *)data, size, 0 );
-			if ( received_bytes > 0 )
-				break;
-			clock_t end = clock();
-			seconds = (double)( end - start ) / CLOCKS_PER_SEC;
-			wait(DELAY);
-		} while ( seconds < MAX_WAIT );
-		if ( received_bytes > 0 )
-			break;
-	}
-	if ( received_bytes <= 0 )
-		return 0;
-	return received_bytes;
 }
 
 

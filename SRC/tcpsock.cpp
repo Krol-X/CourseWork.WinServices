@@ -8,13 +8,18 @@
 #include "tcpsock.h"
 #include <assert.h>
 #include <windows.h>
+#include <time.h>
+
+#define MAX_WAIT 1.0
+#define MAX_TRY  10
+#define DELAY    0.1
 
 //
 // ÌÅÒÎÄ: bool TcpSocket::Open()
 //
 // ÍÀÇÍÀ×ÅÍÈÅ: îòêðûòü ñîêåò
 //
-// ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
+// ÂÎÇÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
 //
 bool TcpSocket::Open() {
 	assert( !IsOpen() );
@@ -34,7 +39,7 @@ bool TcpSocket::Open() {
 //
 // ÍÀÇÍÀ×ÅÍÈÅ: ïðèâÿçàòü ñîêåò ê ïîðòó (ñäåëàòü ñåðâåðîì)
 //
-// ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
+// ÂÎÇÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
 //
 bool TcpSocket::Bind(Address addr) {
 	assert( IsOpen() );
@@ -57,7 +62,7 @@ bool TcpSocket::Bind(Address addr) {
 //
 // ÍÀÇÍÀ×ÅÍÈÅ:  íîâîãî êëèåíòà, ñîåäèíèòñÿ ñ íèì
 //
-// ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
+// ÂÎÇÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
 //
 bool TcpSocket::Accept() {
 	sockaddr cAddr;
@@ -78,7 +83,7 @@ bool TcpSocket::Accept() {
 //
 // ÍÀÇÍÀ×ÅÍÈÅ: ñîåäèíèòñÿ ñ ñåðâåðîì
 //
-// ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
+// ÂÎÇÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
 //
 bool TcpSocket::Connect(Address address) {
 	struct sockaddr_in adr;
@@ -98,10 +103,70 @@ bool TcpSocket::Connect(Address address) {
 //
 // ÌÅÒÎÄ: bool TcpSocket::IsConnected()
 //
-// ÂÎÇÂÐÀÙÀÅÒ: ñîñòîÿíèå ñîåäèíåíèÿ
+// ÂÎÇÐÀÙÀÅÒ: ñîñòîÿíèå ñîåäèíåíèÿ
 //
 bool TcpSocket::IsConnected() {
 	return ( consock != 0 );
+}
+
+
+//
+// ÌÅÒÎÄ: bool TcpSocket::Send(void *data, int size)
+//
+// ÍÀÇÍÀ×ÅÍÈÅ: Îòïðàâèòü äàííûå ÷åðåç óñòàíîâëåííîå ñîåäèíåíèå
+//
+// ÂÎÇÂÐÀÙÀÅÒ: ôëàã óñïåõà îïåðàöèè
+//
+bool TcpSocket::Send(void *data, int size) {
+	assert( data );
+	assert( size > 0 );
+	if ( !IsOpen() )
+		return false;
+	int _sock;
+	if ( IsServer() )
+		_sock = consock;
+	else
+		_sock = sock;
+	int sent_bytes = send( _sock, (char *)data, size, 0 );
+	return sent_bytes == size;
+}
+
+
+//
+// ÌÅÒÎÄ: int TcpSocket::Receive(void *data, int size)
+//
+// ÍÀÇÍÀ×ÅÍÈÅ: Ïîëó÷èòü äàííûå ÷åðåç óñòàíîâëåííîå ñîåäèíåíèå
+//
+// ÂÎÇÂÐÀÙÀÅÒ: êîëè÷åñòâî ïðèíÿòûõ áàéò
+//
+int TcpSocket::Receive(void *data, int size) {
+	assert( data );
+	assert( size > 0 );
+	if ( !IsOpen() )
+		return 0;
+	int _sock;
+	if ( IsServer() )
+		_sock = consock;
+	else
+		_sock = sock;
+	int received_bytes;
+	clock_t start = clock();
+	for ( int trycount = 0; trycount < MAX_TRY; trycount++ ) {
+		double seconds;
+		do {
+			received_bytes = recv( _sock, (char *)data, size, 0 );
+			if ( received_bytes > 0 )
+				break;
+			clock_t end = clock();
+			seconds = (double)( end - start ) / CLOCKS_PER_SEC;
+			wait(DELAY);
+		} while ( seconds < MAX_WAIT );
+		if ( received_bytes > 0 )
+			break;
+	}
+	if ( received_bytes <= 0 )
+		return 0;
+	return received_bytes;
 }
 
 

@@ -79,7 +79,7 @@ class Socket {
 		void Wait();
 		bool SetNonBlocking();
 		virtual bool Open() = 0;
-		virtual bool Bind(Address addr) = 0;
+		bool Bind(Address addr);
 		void Close();
 		bool IsOpen();
 		bool IsServer();
@@ -87,8 +87,8 @@ class Socket {
 		virtual bool Connect(Address addr) = 0;
 		virtual bool IsConnected() = 0;
 		virtual void Disconnect() = 0;
-		bool Send(void *data, int size);
-		int Receive(void *data, int size);
+		virtual bool Send(void *data, int size) = 0;
+		virtual int Receive(void *data, int size) = 0;
 };
 
 

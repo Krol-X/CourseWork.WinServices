@@ -146,7 +146,6 @@ static BOOL ControlServiceAndWait(
 
 int SVC_SetStatus(char *name, int state) {
 	BYTE st;
-	int r = -1;
 	SC_HANDLE hSCM, hService;
 	DWORD Access = SC_MANAGER_CONNECT
 	               | SC_MANAGER_ENUMERATE_SERVICE
@@ -158,11 +157,11 @@ int SVC_SetStatus(char *name, int state) {
 	switch (st) {
 		case SERVICE_CONTROL_STOP:
 			hService = OpenService(hSCM, name,
-			                       SERVICE_START
+			                       SERVICE_STOP
 			                       | SERVICE_QUERY_STATUS );
 			if ( hService == 0 )
 				return -1;
-			r = ControlServiceAndWait( hService,
+			ControlServiceAndWait( hService,
 			                           SERVICE_CONTROL_STOP,
 			                           SERVICE_STOPPED,
 			                           SVC_TIMEOUT );
@@ -173,7 +172,7 @@ int SVC_SetStatus(char *name, int state) {
 			                       | SERVICE_QUERY_STATUS );
 			if ( hService == 0 )
 				return -1;
-			r = ControlServiceAndWait( hService,
+			ControlServiceAndWait( hService,
 			                           SERVICE_CONTROL_PAUSE,
 			                           SERVICE_PAUSED,
 			                           SVC_TIMEOUT );
@@ -184,7 +183,7 @@ int SVC_SetStatus(char *name, int state) {
 			                       | SERVICE_QUERY_STATUS );
 			if ( hService == 0 )
 				return -1;
-			r = ControlServiceAndWait( hService,
+			ControlServiceAndWait( hService,
 			                           SERVICE_CONTROL_CONTINUE,
 			                           SERVICE_RUNNING,
 			                           SVC_TIMEOUT );
@@ -195,24 +194,29 @@ int SVC_SetStatus(char *name, int state) {
 			                        | SERVICE_QUERY_STATUS );
 			if ( hService == 0 )
 				return -1;
-			r = StartService( hService, 0, 0 );
+			StartService( hService, 0, 0 );
 			break;
 	}
-
+	if ( hService )
+		_VERIFY( CloseServiceHandle( hService ) );
 	st = (state >> 3) & 7;
 	if (2 <= st && st <= 4) {
 		DWORD cbNeeded = 0;
 		char buf[65536];
+		hService = OpenService( hSCM, name,
+		                        SERVICE_CHANGE_CONFIG
+		                        | SERVICE_QUERY_CONFIG );
+		if ( hService == 0 )
+			return -1;
 		LPQUERY_SERVICE_CONFIG conf = (LPQUERY_SERVICE_CONFIG) buf;
 		QueryServiceConfig(hService, conf, 65536, &cbNeeded);
 		ChangeServiceConfig(
 		    hService, SERVICE_NO_CHANGE, st,
 		    SERVICE_NO_CHANGE, 0, 0, 0, 0, 0, 0, 0
 		);
+		_VERIFY( CloseServiceHandle( hService ) );
 	}
-	_VERIFY( CloseServiceHandle( hService ) );
-	if ( r == 0 )
-		return -1;
+
 	return SVC_GetStatus(name);
 }
 

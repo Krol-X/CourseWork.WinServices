@@ -1,20 +1,28 @@
 //
-// ÇÀÃÎËÎÂÎÊ: UDPSOCK.H
+// úáçïìï÷ïë: UDPSOCK.H
 //
-// ÎÏÈÑÀÍÈÅ: êëàññ UdpSocket
+// ïğéóáîéå: ËÌÁÓÓ UdpSocket
 //
 // Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 
 #include "sock.h"
+#include <time.h>
 
-class UdpSocket : Socket {
+class UdpSocket : public Socket {
+	protected:
+		double timeout;
+		clock_t start;
+		Address conaddr;
+        char tmpbuf[1024];
+        int tmpsz;
+		bool chktimeout();
 	public:
-		UdpSocket();
-		~UdpSocket();
-		bool Open(unsigned short port);
+		bool Open();
 		bool Accept();
 		bool Connect(Address addr);
 		bool IsConnected();
+		bool Send(void *data, int size);
+		int Receive(void *data, int size);
 		void Disconnect();
-}
+};

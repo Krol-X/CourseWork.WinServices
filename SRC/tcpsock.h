@@ -18,6 +18,8 @@ class TcpSocket : public Socket {
 		bool Accept();
 		bool Connect(Address addr);
 		bool IsConnected();
+		bool Send(void *data, int size);
+		int Receive(void *data, int size);
 		void Disconnect();
 };
 

@@ -61,7 +61,7 @@ class Server {
 //
 struct ClientParams {
 	SocketType sock;
-	vector<ListItem> list;
+	vector<ListItem *> list;
 };
 
 
@@ -76,9 +76,9 @@ class Client {
 	public:
 	    Client();
 		bool GetList(Address addr);
+		void SetSvc(Address addr, unsigned int idx, BYTE state);
 		unsigned int ListSize();
 		ListItem* GetItem(unsigned int idx);
-		void SetSvc(Address addr, unsigned int idx, BYTE state);
 };
 
 // Инициализировать работу с сокетами

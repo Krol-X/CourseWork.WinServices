@@ -27,9 +27,9 @@ CommandLine=
 Folders=engine
 IncludeVersionInfo=0
 SupportXPThemes=1
-CompilerSet=4
-CompilerSettings=00000001g0000000001000000
-UnitCount=11
+CompilerSet=3
+CompilerSettings=0000000100100000000000000
+UnitCount=15
 
 [VersionInfo]
 Major=1
@@ -97,7 +97,7 @@ Compile=1
 Link=1
 Priority=1000
 OverrideBuildCmd=0
-BuildCmd=
+BuildCmd=$(CPP) -c tcpsock.cpp -o tcpsock.o $(CXXFLAGS)
 
 [Unit3]
 FileName=engine.h
@@ -153,6 +153,46 @@ BuildCmd=
 FileName=services.cpp
 CompileCpp=1
 Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit12]
+FileName=udpsock.cpp
+CompileCpp=1
+Folder=engine
+Compile=0
+Link=0
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=$(CPP) -c udpsock.cpp -o udpsock.o $(CXXFLAGS)
+
+[Unit13]
+FileName=udpsock.h
+CompileCpp=1
+Folder=engine
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit14]
+FileName=CPLOG.cpp
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit15]
+FileName=CPLOG.h
+CompileCpp=1
+Folder=
 Compile=1
 Link=1
 Priority=1000
