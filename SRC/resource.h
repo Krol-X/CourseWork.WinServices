@@ -3,8 +3,6 @@
 //
 // ОПИСАНИЕ: содержит определения идентификаторов ресурсов и элементов
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
 
 #ifndef resouce_h_
 #define resouce_h_

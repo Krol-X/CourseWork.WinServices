@@ -1,5 +1,5 @@
 //
-// ОСНОВНОЙ МОДУЛЬ: KSVCCTL.CPP
+// ОСНОВНОЙ МОДУЛЬ: MYSVCCTL.CPP
 //
 // ОПИСАНИЕ ПРОГРАММЫ:
 //   Программа позволяет управлять службами на удалённом компьютере (в режиме
@@ -7,8 +7,6 @@
 // протокола (в режиме сервера).
 //
 // ЦЕЛЕВАЯ ПЛАТФОРМА: WIN32
-//
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 #include "include.h"
 #include "resource.h"
@@ -34,7 +32,7 @@ UINT LV_Selection();
 // Глобальные константы
 //
 const TCHAR *szNull = TEXT("");
-const TCHAR *szConfigFile = TEXT("ksvcctl.cfg");
+const TCHAR *szConfigFile = TEXT("mysvcctl.cfg");
 
 
 //

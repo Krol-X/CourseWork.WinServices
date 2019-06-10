@@ -1,11 +1,8 @@
 //
-// ϊαηομοχολ: UDPSOCK.H
+// ΗΐΓΞΛΞΒΞΚ: UDPSOCK.H
 //
-// οπισαξιε: ΛΜΑΣΣ UdpSocket
+// ΞΟΘΡΐΝΘΕ: κλΰρρ UdpSocket
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
-
 #include "sock.h"
 #include <time.h>
 

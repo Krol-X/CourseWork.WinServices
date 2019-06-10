@@ -1,9 +1,7 @@
 //
 // ЗАГОЛОВОК: SOCK.CPP
 //
-// ОПИСАНИЕ: абстрактный класс Socket
-//
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
+// ОПИСАНИЕ: реализация абстрактного класса Socket
 //
 #include "sock.h"
 #include <assert.h>

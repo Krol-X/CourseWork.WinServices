@@ -3,8 +3,6 @@
 //
 // ОПИСАНИЕ: реализация работы сервера и клиента
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
 #include "include.h"
 #include "engine.h"
 #include "services.h"
@@ -16,16 +14,15 @@ extern pthread_mutex_t mutex;
 // СЕКЦИЯ: Настройки, константы и структура датаграммы
 //
 
-#define PROTOCOLID *((DWORD *)"\17VS\3")
+#define PROTOCOLID *((DWORD *)"\17VS\2")
 #define CMD_ANY      0
-#define CMD_CHECKOUT 0x80000000
 #define CMD_LIST     0x0C000000
 #define CMD_SET      0x18000000
 
 //
 // СТРУКТУРА: Datagram
 //
-// СОДЕРЖИМОЕ: передоваемая комманда и данные
+// СОДЕРЖИМОЕ: передаваемая комманда и данные
 //
 struct Datagram {
 	DWORD id;

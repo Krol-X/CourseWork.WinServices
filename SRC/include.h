@@ -3,8 +3,6 @@
 //
 // ОПИСАНИЕ: аналог stdafx.h из MSVS
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
 
 #ifndef include_h_
 #define include_h_

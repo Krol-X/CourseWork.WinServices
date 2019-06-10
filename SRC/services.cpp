@@ -1,3 +1,8 @@
+//
+// МОДУЛЬ: SERVICES.CPP
+//
+// ОПИСАНИЕ: интерфейс управления службами Windows
+//
 #include "services.h"
 
 

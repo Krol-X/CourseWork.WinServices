@@ -1,11 +1,7 @@
 //
-// ЗАГОЛОВОК: CPLOG.H
+// ЗАГОЛОВОК: LOG.H
 //
 // ОПИСАНИЕ: лог (реализация для C++)
-//
-// ВЕРСИЯ: 06.06.19
-//
-// Copyright [C] 2018-2019 Alex Kondratenko krolmail@list.ru
 //
 
 #ifndef log_h_

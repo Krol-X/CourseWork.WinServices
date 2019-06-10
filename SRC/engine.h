@@ -3,8 +3,6 @@
 //
 // ОПИСАНИЕ: реализация работы сервера и клиента
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
 
 #ifndef engine_h_
 #define engine_h_
@@ -21,7 +19,6 @@
 struct ListItem {
 	BYTE state;
 	char *name, *viewname;
-	char data[];
 };
 
 
@@ -71,7 +68,7 @@ struct ClientParams {
 // НАЗНАЧЕНИЕ: реализация клиента
 //
 class Client {
-	private:
+	protected:
 		ClientParams param;
 	public:
 	    Client();

@@ -1,25 +1,25 @@
 [Project]
-FileName=ksvcctl.dev
-Name=ksvcctl
+FileName=mysvcctl.dev
+Name=mysvcctl
 Type=0
 Ver=2
 ObjFiles=
 Includes=
 Libs=
-PrivateResource=ksvcctl_private.rc
+PrivateResource=mysvcctl_private.rc
 ResourceIncludes=
 MakeIncludes=
 Compiler=
 CppCompiler=
 Linker=-lcomctl32_@@_-lwsock32_@@_
 IsCpp=1
-Icon=ksvcctl.ico
+Icon=mysvcctl.ico
 ExeOutput=
 ObjectOutput=
 LogOutput=
 LogOutputEnabled=0
 OverrideOutput=0
-OverrideOutputName=ksvcctl.exe
+OverrideOutputName=mysvcctl.exe
 HostApplication=
 UseCustomMakefile=0
 CustomMakefile=
@@ -51,7 +51,7 @@ AutoIncBuildNr=0
 SyncProduct=1
 
 [Unit1]
-FileName=ksvcctl.cpp
+FileName=mysvcctl.cpp
 CompileCpp=1
 Folder=
 Compile=1
@@ -61,7 +61,7 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit2]
-FileName=ksvcctl.rc
+FileName=mysvcctl.rc
 Folder=Resources
 Compile=1
 Link=0
@@ -180,9 +180,9 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit14]
-FileName=CPLOG.cpp
+FileName=log.cpp
 CompileCpp=1
-Folder=
+Folder=engine
 Compile=1
 Link=1
 Priority=1000
@@ -190,9 +190,9 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit15]
-FileName=CPLOG.h
+FileName=log.h
 CompileCpp=1
-Folder=
+Folder=engine
 Compile=1
 Link=1
 Priority=1000

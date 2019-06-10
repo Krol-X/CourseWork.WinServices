@@ -1,9 +1,7 @@
 //
-// ЗАГОЛОВОК: UDPSOCK.CPP
+// МОДУЛЬ: UDPSOCK.CPP
 //
-// ОПИСАНИЕ: класс UdpSocket
-//
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
+// ОПИСАНИЕ: реализация класса UdpSocket
 //
 #include "udpsock.h"
 #include <assert.h>
@@ -12,27 +10,6 @@
 #define MAX_WAIT 3.0
 #define MAX_TRY  5
 #define DELAY    0.1
-
-#include "cplog.h"
-
-char *genLogFName();
-LogObj Log(genLogFName());
-
-//
-// ФУНКЦИЯ: char *genLogFName()
-//
-// НАЗНАЧЕНИЕ: генерирует имя файла лога
-//
-char *genLogFName() {
-	char *buf = new char[25];
-	time_t t = time(0);
-	struct tm* aTm = localtime(&t);
-	sprintf(buf, "ksvc %02d%02d%04d_%02d%02d%02d.log",
-	        aTm->tm_mday, aTm->tm_mon+1, aTm->tm_year+1900,
-	        aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
-	return buf;
-}
-
 
 //
 // МЕТОД: void UdpSocket::chktimeout()

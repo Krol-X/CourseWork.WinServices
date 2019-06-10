@@ -1,9 +1,7 @@
 //
 // ЗАГОЛОВОК: TCPSOCK.CPP
 //
-// ОПИСАНИЕ: класс TcpSocket
-//
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
+// ОПИСАНИЕ: реализация класса TcpSocket
 //
 #include "tcpsock.h"
 #include <assert.h>

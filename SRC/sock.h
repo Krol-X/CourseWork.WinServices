@@ -3,8 +3,6 @@
 //
 // ОПИСАНИЕ: абстрактный класс Socket
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
 
 #ifndef sock_h_
 #define sock_h_

@@ -1,9 +1,6 @@
 //
-// ФАЙЛ РЕСУРСОВ МОДУЛЯ: KSVCCTL.CPP
+// ФАЙЛ РЕСУРСОВ МОДУЛЯ: MYSVCCTL.CPP
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
-
 #include <windows.h>
 #include <winuser.h>
 #include <commctrl.h>
@@ -11,7 +8,7 @@
 
 
 STRINGTABLE {
-	IDS_WNDCLASS,                      "KSvcCtl"
+	IDS_WNDCLASS,                      "MySvcCtl browser"
 	IDS_START,                         "Запустить"
 	IDS_CONNECT,                       "Соединиться"
 	IDS_STOP,                          "Остановить"
@@ -53,7 +50,7 @@ STRINGTABLE {
 IDD_CHOOSE DIALOG 1, 1, 141, 90
 STYLE DS_SETFONT | DS_CENTER | WS_VISIBLE | WS_CAPTION | WS_SYSMENU |
 WS_MINIMIZEBOX
-CAPTION "KSvcCtl"
+CAPTION "MySvcCtl"
 FONT 10, "Sans serif" {
 	LTEXT "Выберите режим работы программы", IDC_STATIC, 10, 4, 128, 10
 	AUTORADIOBUTTON "Сервер", IDD1_SERVER, 7,   14, 36, 14

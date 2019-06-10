@@ -3,8 +3,6 @@
 //
 // ОПИСАНИЕ: класс TcpSocket
 //
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
-//
 
 #ifndef tcpsock_h_
 #define tcpsock_h_

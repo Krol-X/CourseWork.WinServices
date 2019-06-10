@@ -1,14 +1,10 @@
 //
-// МОДУЛЬ: CPLOG.CPP
+// МОДУЛЬ: LOG.CPP
 //
 // ОПИСАНИЕ: лог (реализация для C++)
 //
-// ВЕРСИЯ: 06.06.19
-//
-// Copyright [C] 2018-2019 Alex Kondratenko krolmail@list.ru
-//
 
-#include "cplog.h"
+#include "log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

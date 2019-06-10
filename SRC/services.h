@@ -1,9 +1,7 @@
 //
-// ЗАГОЛОВОК-МОДУЛЬ: SERVICES.H
+// ЗАГОЛОВОК: SERVICES.H
 //
 // ОПИСАНИЕ: интерфейс управления службами Windows
-//
-// Copyright [C] 2019 Alex Kondratenko krolmail@list.ru
 //
 
 #ifndef services_h_
