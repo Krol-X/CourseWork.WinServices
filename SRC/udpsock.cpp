@@ -24,10 +24,8 @@ bool UdpSocket::chktimeout() {
 	start = end;
 	if ( timeout > MAX_WAIT ) {
 		timeout = -1;
-		Log.WriteDateF("Timeout TRUE\n");
 		return true;
 	}
-	Log.WriteDateF("Timeout: %ld\n", timeout);
 	return false;
 }
 
@@ -48,10 +46,8 @@ bool UdpSocket::Open() {
 	sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 	if ( sock <= 0 ) {
 		sock = 0;
-		Log.WriteDateF("Open FALSE\n");
 		return false;
 	}
-	Log.WriteDateF("Open TRUE\n");
 	return true;
 }
 
@@ -67,7 +63,6 @@ bool UdpSocket::Accept() {
 	timeout = -1;
 	consock = 1; // заглушка для IsConnected()
 	tmpsz = Receive( tmpbuf, 1024 );
-	Log.WriteDateF("Accept %d\n", tmpsz > 0);
 	return ( tmpsz > 0 );
 }
 
@@ -83,7 +78,6 @@ bool UdpSocket::Connect(Address address) {
 	timeout = -2;
 	consock = -1; // заглушка для IsConnected()
 	conaddr = address;
-	Log.WriteDateF("Connect\n");
 	return true;
 }
 
@@ -95,19 +89,6 @@ bool UdpSocket::Connect(Address address) {
 //
 bool UdpSocket::IsConnected() {
 	return ( consock != 0 );
-}
-
-
-#include <stdio.h>
-#ifndef countof
-#   define countof(a)	    (sizeof(a)/sizeof(a[0]))
-#endif
-void PrintError(IN DWORD dwErrorCode) {
-	TCHAR szErrorText[512];
-	if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwErrorCode, 0,
-	                   szErrorText, countof(szErrorText), NULL))
-		sprintf(szErrorText, "Error %ld", dwErrorCode);
-	MessageBox(0, szErrorText, "Error", MB_OK | MB_ICONERROR);
 }
 
 
@@ -135,10 +116,6 @@ bool UdpSocket::Send(void *data, int size) {
 	else
 		sent_bytes = sendto( _sock, (char *)data, size, 0,
 		                     (const sockaddr *)&adr, sizeof(adr) );
-    Log.WriteDateF("Sending %d\n", sent_bytes);
-	if ( sent_bytes == -1 ) {
-		PrintError( GetLastError() );
-	}
 	return sent_bytes == size;
 }
 
@@ -182,7 +159,6 @@ int UdpSocket::Receive(void *data, int size) {
 		tmpsz = 0;
 		return received_bytes;
 	}
-	Log.WriteDateF("Receiving %d\n", received_bytes);
 	if ( received_bytes <= 0 )
 		return 0;
 	if ( timeout == -1 ) {
@@ -209,6 +185,5 @@ void UdpSocket::Disconnect() {
 	if ( IsConnected() ) {
 		timeout = -1;
 		consock = 0;
-		Log.WriteDateF("Disconnect\n");
 	}
 }

@@ -11,6 +11,30 @@
 extern pthread_mutex_t mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
+// ÑÅÊÖÈß: Ëîã
+//
+
+#include "log.h"
+
+char *genLogFName();
+LogObj Log(genLogFName());
+
+//
+// ÔÓÍÊÖÈß: char *genLogFName()
+//
+// ÍÀÇÍÀ×ÅÍÈÅ: ãåíåðèðóåò èìÿ ôàéëà ëîãà
+//
+char *genLogFName() {
+	char *buf = new char[25];
+	time_t t = time(0);
+	struct tm* aTm = localtime(&t);
+	sprintf(buf, "mysvclog %02d%02d%04d_%02d%02d%02d.log",
+	        aTm->tm_mday, aTm->tm_mon+1, aTm->tm_year+1900,
+	        aTm->tm_hour, aTm->tm_min, aTm->tm_sec);
+	return buf;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // ÑÅÊÖÈß: Íàñòðîéêè, êîíñòàíòû è ñòðóêòóðà äàòàãðàììû
 //
 
@@ -63,11 +87,14 @@ static void *Server_main(void *_param) {
 	Datagram *indg = (Datagram *) inbuf;
 	Datagram *outdg = (Datagram *) outbuf;
 	void *data;
+	Log.WriteDateF("Server: started\n");
 	do {
 		if ( sock->Accept() ) {
+			Log.WriteDateF("Server: connected with client\n");
 			outdg->id = PROTOCOLID;
 			if ( sock->Receive( inbuf, RESERVED_BYTES+260 )
 			        && indg->id == PROTOCOLID ) {
+				Log.WriteDateF("Server: giving command %d\n", indg->cmd_cou>>24);
 				switch ( indg->cmd_cou ) {
 					case CMD_LIST:
 						DWORD sz, num;
@@ -75,19 +102,26 @@ static void *Server_main(void *_param) {
 						data = SVC_getEnum(sz, num);
 						memcpy( outdg->data, data, sz );
 						outdg->cmd_cou = CMD_LIST + num;
+						Log.WriteDateF("Server: sending list\n");
 						sock->Send(outdg, sz + RESERVED_BYTES);
 						break;
 					case CMD_SET:
 						SVC_SetStatus( (char *)(&indg->data[1]),
 						               indg->data[0] );
+						Log.WriteDateF("Server: set service - ok\n");
 						break;
+					default:
+						Log.WriteDateF("Server error: unknown command\n");
 				}
-			}
+			} else
+				Log.WriteDateF("Server error: no packet or unknown id\n");
 			sock->Wait();
 			sock->Disconnect();
+			Log.WriteDateF("Server: disconnected\n");
 		}
 		GetParam1( x, active );
 	} while ( x );
+	Log.WriteDateF("Server: stoped\n");
 	return 0;
 }
 
@@ -178,6 +212,7 @@ bool Client::GetList(Address addr) {
 	Datagram *indg = (Datagram *) inbuf;
 	Datagram *outdg = (Datagram *) outbuf;
 	outdg->id = PROTOCOLID;
+	Log.WriteDateF("Client: getting list\n");
 	assert( !sock->IsOpen() );
 	r = sock->Open();
 	if (r) {
@@ -215,10 +250,13 @@ bool Client::GetList(Address addr) {
 			}
 			sock->Wait();
 			sock->Disconnect();
-		}
+		} else
+			Log.WriteDateF("Client error: cannot connect\
+or setup non-blocking mode\n");
 		if ( sock->IsOpen() )
 			sock->Close();
-	}
+	} else
+		Log.WriteDateF("Client error: socket is not opened\n");
 	pthread_mutex_unlock(&mutex);
 	return r;
 }
@@ -239,6 +277,7 @@ void Client::SetSvc(Address addr, unsigned int idx, BYTE state) {
 	unsigned char outbuf[BUF_SIZE];
 	Datagram *outdg = (Datagram *) outbuf;
 	outdg->id = PROTOCOLID;
+	Log.WriteDateF("Client: set service \"%s\" %d\n", item->name, state);
 	assert( !sock->IsOpen() );
 	r = sock->Open();
 	if (r) {
@@ -251,10 +290,13 @@ void Client::SetSvc(Address addr, unsigned int idx, BYTE state) {
 			sock->Wait();
 			sock->Send( outdg, RESERVED_BYTES + 2 + strlen(&outdg->data[1]) );
 			sock->Disconnect();
-		}
+		} else
+			Log.WriteDateF("Client error: cannot connect\
+or setup non-blocking mode\n");
 		if ( sock->IsOpen() )
 			sock->Close();
-	}
+	} else
+		Log.WriteDateF("Client error: socket is not opened\n");
 	pthread_mutex_unlock(&mutex);
 }
 

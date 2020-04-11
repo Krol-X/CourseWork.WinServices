@@ -1,41 +1,18 @@
-DEV/
-*.zip
-*.rar
-*.7z
-#Ignore thumbnails created by Windows
-Thumbs.db
-#Ignore files built by Visual Studio
-*.obj
+# Binary files
 *.exe
-*.pdb
-*.user
-*.aps
-*.pch
-*.vspscc
-*_i.c
-*_p.c
-*.ncb
-*.suo
-*.tlb
-*.tlh
-*.bak
-*.cache
-*.ilk
-*.log
-[Bb]in
-[Dd]ebug*/
 *.lib
-*.sbr
-obj/
-[Rr]elease*/
-_ReSharper*/
-[Tt]est[Rr]esult*
-.vs/
-#Nuget packages folder
-packages/
-#Ignore files build by DEV C++
+*.dll
 *.o
-*_private*
-*.manifest
-*makefile*
+*.a
+
+# Dev-Cpp generated files
+*.def
 *.layout
+*.win
+*_private*
+
+# Other files
+*.log
+*.cfg
+*.bak
+*.manifest
